@@ -1,0 +1,510 @@
+% -*- coding: utf-8 -*-
+@import: settings
+@import: top-page
+@import: preface
+@import: introduction
+@import: getting-started
+@import: alias-command-definition
+@import: programming
+@import: overall
+@import: advanced-command-definition
+@import: line-breaking
+@import: system-and-config
+@import: typography
+@import: graphics
+@import: cross-reference
+@import: page-breaking
+@import: future-work
+@import: specification
+@import: bib
+
+document (|
+  title = {The \SATySFi;book（Web公開版 第1版）};
+  author = {Takashi SUWA};
+  preface = preface;
+  bibliography = bibliography;
+  top-page = Some(top-page);
+  copyright-page = (|
+    title = {The \SATySFi;book（Web公開版 第1版）};
+    author = {Takashi SUWA\hskip(5cm);};
+    date = {2018年12月5日};
+    contact = {\url{gfngfn.bd\@gmail.com}};
+    printed-by = None;
+  |);
+|) '<
+  +chapter?:(`introduction`){\SATySFi;の開発動機}< #introduction; >
+  +chapter?:(`getting-started`){\SATySFi;簡易入門}< #getting-started; >
+  +chapter?:(`basic-command-definition`){コマンド定義：基礎編}<
+    +p{
+      \ref-chapter(`getting-started`);で\pkg{stdjareport}を用いて
+      \SATySFi;の基礎的なコマンドの用法を知った．
+      ところで，マークアップ言語の大きな強みのひとつは
+      自前でコマンドを定義することによって
+      種々の自動処理を実現したり独自の意味マークアップを規定したりできる点にあったはずである．
+      実際，\codem{+chapter}とか\codem{+p}とか\codem{\\dfn}とかいった
+      コマンドたちは単に\pkg{stdjareport}クラスによって定義が提供されているだけであり，
+      その気になればユーザでも同様の定義を書いたりできるはずだ．
+      そろそろ自前でコマンドを定義したくてうずうずしている読者も多いかと思う．
+      この章では，コマンド定義のごく基礎的な方法を紹介する．
+      あらかじめ言ってしまうとここでの説明はとてもアドホックなものになっており，
+      \SATySFi;をよく理解されたのちにこの章を読めば
+      「こんな子供騙しな説明をしていたのか」と驚かれるかもしれないが，
+      読者の様々なバックグラウンドを鑑み，
+      まず最初の一歩としておおまかに把握してもらうには良い説明だろうと
+      判断してのことなのでご容赦願いたいと思う．
+      より深い理解を獲得し，より柔軟で幅広い種類の処理をコマンドとして定義するには，
+      \ref-chapter(`overall-structure`);で
+      \SATySFi;が行なっている組版処理の全体像を把握した上で
+      \ref-chapter(`advanced-command-definition`);に臨んでいただきたい．
+    }
+    +section{簡単なエイリアス}< #alias-command-definition; >
+    +section{プログラミング言語としての\SATySFi;}< #programming; >
+  >
+  +chapter?:(`overall-structure`){文書が処理される仕組み}< #overall; >
+  +chapter?:(`advanced-command-definition`){コマンド定義：発展編}< #advanced-command-definition; >
+  +chapter?:(`line-breaking`){行分割処理}< #line-breaking; >
+  +chapter?:(`system-and-config`){システムと設定ファイル}< #system-and-config; >
+  +chapter?:(`typography`){文字組版}< #typography; >
+  +chapter?:(`graphics`){グラフィックス}< #graphics; >
+  +chapter?:(`math`){数式組版}<
+    +p{
+      理工系の文書をしたためる者にとって，
+      数式組版機能は当然のものとして組版処理システムに備わっていてほしいものだ．
+      \TeX;/\LaTeX;が30年の長きに亘って使われ続けてきた大きな要因のひとつが，
+      誰もが納得するような品質の数式組版機能を古くから提供している
+      数少ない組版処理システムだったからであることにおそらく異論はないだろう．
+      \SATySFi;も，実はそこそこの品質の数式組版機能を有している：
+
+      \d-code-and-block(```
+        +p{ \eqn(
+          let int1 = ${\int_0^a} in
+          let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
+          let sqrt2 = ${\sqrt{x^2 + r^2}} in
+            ${ \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
+                 #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
+        ); }
+      ```)<
+        +p{ \vskip(-0.5cm);\eqn(
+          let int1 = ${\int_0^a} in
+          let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
+          let sqrt2 = ${\sqrt{x^2 + r^2}} in
+            ${ \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
+                 #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
+        );\vskip(-0.5cm); }
+      >%
+
+      本章では，\SATySFi;に備わっている数式組版機能について，詳細を追って見ていくことにしよう．
+      なお，繰り返しになるが，\SATySFi;での数式の記述はコードの見た目上\LaTeX;にそっくりなものの，
+      裏でやっていることは両者で全然違う．
+      \LaTeX;は字句解析（トークン化）に相当する処理を組版処理と同時進行で行ない，
+      かつ構文木も一切構築せずパターンマッチでトークン列を書き換えていくのに対し，
+      \SATySFi;は静的に構文解析して数式を構文木の形で保持している．
+    }
+    +section{数式の構文と扱い}<
+      +p{
+        数式は基本的にプログラム中で\codem{\$\{ ${\cdots} \}}という形で書かれ，
+        \type(Type.math);型をもつ．数式中では大小ラテン文字と数字のほか，
+        以下の記号類が通常の文字として直接書ける：
+
+        \tokens{|+|-|\*|/|:|=|\<|\>|~|.|,|?|\`|}%
+
+        数式として書けるのは\codem{\$\{\meta-star{\meta{me}}\}}という形であり，
+        \codem{\meta{me}}は以下のような構文定義に基づく：
+
+        \align[
+          ${|\text!{\codem{\meta{me}}} |\BNFeq
+            \text!{\codem{
+              \meta{ma}%
+              \meta-or{|\meta-star{'}|_\meta{mg}^\meta{mg}|\meta-star{'}^\meta{mg}
+                       |\meta-star{'}^\meta{mg}_\meta{mg}
+                       |\meta-star{'}_\meta{mg}|}
+            }}
+          |};
+          ${|\text!{\codem{\meta{ma}}} |\BNFeq
+            \text!{\codem{
+              \meta-or{|\meta{ch}|\meta{mcapp}|\#\meta{x}|}
+            }}
+          |};
+          ${|\text!{\codem{\meta{mg}}} |\BNFeq
+            \text!{\codem{
+              \meta-or{|\meta{ma}|\{\meta-star{\meta{me}}\}|\{\|\meta-star{\meta-star{\meta{me}}\|}\}|}
+            }}
+          |};
+          ${|\text!{\codem{\meta{mcapp}}} |\BNFeq
+            \text!{\codem{
+              \meta{mcmd}\meta-star{
+                \meta-or{|\{\meta-star{\meta{me}}\}|!(\meta{expr})|!\{\meta{It}\}|!\<\meta{Bt}\>|}
+              }
+            }}
+          |};
+        ];%
+
+        ただしここで\codem{\meta{ch}}は数式中で文字として使えるもの1文字，
+        \codem{\meta{mcmd}}は数式コマンド（インラインコマンドと同一範疇のトークン），
+        \codem{\meta{expr}}は式，\codem{\meta{It}}はインラインテキスト，
+        \codem{\meta{Bt}}はブロックテキストを，\codem{\meta{x}}は変数をそれぞれ動く．
+        \codem{\#\meta{x}}は変数\codem{\meta{x}}の内容である数式をそこに埋め込む機能の記法だが，
+        セミコロンは末尾につけないことに注意．
+        また，\codem{\meta{mcapp}}は数式コマンドの適用だが，
+        引数の種類に式引数とインライン引数の差異のようなものはなく，
+        すべて一律に扱われ，こちらもいかなる場合も（引数がない場合も）末尾にセミコロンをつけない．
+        なお，数式中に数式コマンドの引数としてインラインテキストが出現しうるし，
+        インラインテキストの中でも当然式引数または文中数式として数式が登場するので，
+        \codem{\{ ${\cdots} \}}の括弧が入り乱れて少しややこしいかもしれないが，
+        気持ちとしては “\codem{\$\{\}}の中では\codem{\{ ${\cdots} \}}が
+        数式扱い，\codem{!\{ ${\cdots} \}}の中では再び\codem{\{ ${\cdots} \}}が
+        インラインテキスト扱いに戻る” という構造になっている．
+        数式コマンドの定義は，次のような構文で行なう：
+
+        \d-codem{
+          let-math \meta{mcmd} \metasub(${1}){x} ${\cdots} \metasub(${n}){x} =
+            \meta{expr}
+        }%
+
+        インラインコマンドやブロックコマンドと違い，第0引数はとらない．
+        各変数\codem{\metasub(${i}){x}}に\type(Type.tymtausub ${i});がつく下で
+        式\codem{\meta{expr}}に\type(Type.math);型がつくとき，
+        この数式コマンド\codem{\meta{mcmd}}が定義されて
+        以下のような型をもつと定められている：
+
+        \quote{
+          \type(Type.(cmdM [tymtausub ${1}; tymtausub ${2}; of-math ${\cdots}; tymtausub ${n}]));
+        }%
+
+        例えば型の導出規則 ${\Gamma \vdash e : \tau} を
+        \codem{\\tj\{\\Gamma\}\{e\}\{\\tau\}}という具合に書くためのコマンド
+        \codem{\\tj} : \type(Type.(cmdM [math; math; math]));は
+        以下のようにして定義できる：
+
+        \d-code(```
+          let-math \tj mG me mty = ${#mG \vdash #me : #mty}
+        ```);%
+
+        \type(Type.math);型の値はインラインテキストに近いもので，単に数式の “構造” を保持しているだけである\footnote{
+          ただし “演算子がどのように結合しているか” というような情報は持っていない．
+          1つの “グループ” \codem{\{ ${\cdots} \}}内で文字は単に一列に並んでいるだけで，
+          “構造” として保持されているのはあくまで指数・添字・分数といったものである．
+          \SATySFi;での数式の定式化はいわば “指数・添字・分数などが正体の隠されたコンストラクタで，
+          構築のみができて分解ができない代数的データ型” といった具合だ．
+        }．
+        数式を “実際に組み上げる” のは次のプリミティヴが担う：
+
+        \val({embed-math})(Type.(context --> (math --> inline-boxes)));%
+
+        これを使った例を挙げてみる．
+        別行立て数式を記述するコマンド\codem{\\eqn}の実装の根幹は，次のようになっている：
+
+        \d-code(```
+          let-inline ctx \eqn math =
+            inline-fil ++ embed-block-breakable ctx
+              (line-break true true ctx
+                (inline-fil ++ (embed-math ctx math) ++ inline-fil))
+        ```);%
+
+        \codem{embed-block-breakable}については\ref-chapter(`line-breaking`);で説明したとおりである．
+        \codem{embed-math}が使う数式フォントの情報はテキスト処理文脈が保持しており，
+        数式フォントの変更には以下のプリミティヴを用いる．
+
+        \val({set-math-font})(Type.(string --> (context --> context)));%
+
+        数式フォントには拡大率とベースライン調整率の概念はなく，フォント名だけを与える．
+      }
+    >
+    +section{文中数式の扱い}<
+      +p{
+        \ref-chapter(`getting-started`);でも説明したように，数式\codem{\$\{ ${\cdots} \}}は
+        インラインテキスト中にいきなり書いても使えるのであった．これがどのような仕組みで実現されているのかというと，
+        実は文中数式は実行時に何らかの\type(Type.(cmdI [math]));型のコマンド\codem{\\\meta{math}}が補われており，
+        単に\codem{\$\{ ${\cdots} \}}と書いたものは\codem{\\\meta{math}(\$\{ ${\cdots} \})\;}と
+        扱われるのである．この文中数式用コマンド\codem{\\\meta{math}}はテキスト処理文脈に保持されており，
+        インライン変換時に補われる．文中数式用コマンドを変えたい場合は
+
+        \val({set-math-command})(Type.(cmdI [math] --> (context --> context)));%
+
+        というプリミティヴを使い，\codem{\meta{ctx} \|\> set-math-command (command \\\meta{math})}
+        のようにコマンドを渡す．\codem{(command ${\cdots})}は “コマンドそのもの” を受け渡しするための
+        特殊な構文だが，現在のところ\codem{set-math-command}と
+        \ref-chapter(`page-breaking`);で述べる\codem{get-initial-context}くらいでしか用いる必要がない．
+      }
+    >
+    +section{数式を構築するプリミティヴ}<
+      +p{
+        この節では，数式コマンドの定義に使える，数式を構築するためのプリミティヴを紹介する．
+        用例は\pkg{math}パッケージの実装を見ると豊富にあるので参照されたい．
+
+        \val-explain({math-frac})(Type.(math --> (math --> math))) {
+          第1引数を分子，第2引数を分母とする分数を返す．
+        }%
+
+        \vals-explain({|math-lower|math-upper|})(Type.(math --> (math --> math))) {
+          \codem{math-lower \metasub(${1}){m} \metasub(${2}){m}}で
+          数式\codem{\metasub(${1}){m}}の下に添字の大きさで数式\codem{\metasub(${2}){m}}を組む．
+          \codem{math-upper}は上．
+        }%
+
+        \val-explain({math-radical})(Type.(option math --> (math --> math))) {
+          第2引数に渡された数式に根号をつける．第1引数は根号の左肩に乗せる指数がある場合は
+          \codem{Some( ${\cdots} )}で与え，必要ない場合は\codem{None}で与えるつもりで用意したものだが，
+          現在の実装では\codem{None}の場合しか対応しておらず，\codem{Some( ${\cdots} )}を渡すと
+          実行時エラーになる．
+          また根号のグリフの形も（フォントのデータを用いるのではなく）決まった形しか出力できない．
+          将来的には\codem{math-paren}のように根号をグラフィックスで指定できるようにする想定である．
+        }%
+
+        \val-explain({math-color})(Type.(color --> (math --> math))) {
+          \codem{math-color \meta{color} \meta{m}}で
+          数式\codem{\meta{m}}に文字色を\codem{\meta{color}}にする指定をつけて返す．
+        }%
+
+        ところで，数式を構成する “アトム” たちには，スペーシングのために属性が与えられる．
+        それが以下で定義されるような代数的データ型，\type(Type.math-class);型である：
+
+        \d-code(```
+          type math-class = MathOrd | MathBin | MathRel | MathOp | MathPunct
+                          | MathOpen | MathClose | MathPrefix | MathInner
+        ```);%
+
+        各コンストラクタはそれぞれ通常，2項演算子，関係子，作用子，パンクチュエーション，
+        開き括弧類，閉じ括弧類，接頭類，部分式という属性に対応する．
+        属性に基づくスペーシングは基本的に\TeX;による処理と同様になるようにしているので，
+        どのようにスペーシングが行なわれるかについては\cite[`TeXbyTopic`];や\cite[`Kieda2018`];を参照されたい．
+        ただし，新しい属性がひとつだけあり，\codem{MathPrefix}すなわち接頭類アトムである．
+        これは ${\ordd x} や ${\partial x} といった，
+        手前に通常アトムや閉じ括弧類アトムなどがきた場合に自動でスペースを挿入するための属性である．
+        ともあれ，この\type(Type.math-class);型の関わるプリミティヴを見てみる：
+
+        \vals-explain({|get-left-math-class|get-right-math-class|})%
+          (Type.(context --> (math --> option math-class))) {
+            第1引数のテキスト処理文脈に基づき，第2引数の数式の
+            左端と右端がそれぞれどのような属性の “アトム” になっているか返す．
+            数式が空の場合は\codem{None}が返る．
+          }%
+
+        \val-explain({math-group})%
+          (Type.(math-class --> (math-class --> (math --> math)))) {
+            \codem{math-group \metasub(${1}){cls} \metasub(${2}){cls} \meta{m}}で
+            数式\codem{\meta{m}}内は通常どおりのスペーシングで組むが，\codem{\meta{m}}全体を
+            左側のスペーシングに関しては属性\codem{\metasub(${1}){cls}}を，
+            右側のスペーシングに関しては属性\codem{\metasub(${2}){cls}}をもっているかのように扱わせる．
+          }%
+
+        \val-explain({math-pull-in-scripts})%
+          (Type.(math-class --> (math-class --> ((option math --> (option math --> math)) --> math)))) {
+            添字と指数がつけられたときに，“それらを内側に取り込んで使える” 数式要素を作成する機能である．
+            \codem{math-pull-in-scripts \metasub(${1}){cls} \metasub(${2}){cls} \meta{k}}の形で使う．
+            左側のスペーシングに関しては属性\codem{\metasub(${1}){cls}}を，
+            右側のスペーシングに関しては属性\codem{\metasub(${2}){cls}}をもっているかのように扱わせる．
+            実際の “中身の数式” は，使われた箇所で
+
+            \listing{
+              * 添字も指数もつかなかった場合は\codem{\meta{k} None None}
+              * 添字\codem{\metasub(${1}){m}}だけついた場合は\codem{\meta{k} (Some(\metasub(${1}){m})) None}
+              * 指数\codem{\metasub(${2}){m}}だけついた場合は\codem{\meta{k} None (Some(\metasub(${2}){m}))}
+              * 添字\codem{\metasub(${1}){m}}も指数\codem{\metasub(${2}){m}}もついた場合は
+                \codem{\meta{k} (Some(\metasub(${1}){m})) (Some(\metasub(${2}){m}))}
+            }%
+
+            を評価した結果の数式とする．
+          }%
+
+        \val-explain({text-in-math})%
+          (Type.(math-class --> ((context --> inline-boxes) --> math))) {
+            \codem{text-in-math \meta{cls} \meta{k}}の形で使い，
+            属性\codem{\meta{cls}}の “アトム” として\codem{\meta{k}}が返すインラインボックス列を数式中に埋め込む．
+            \codem{\meta{k}}に渡されるテキスト処理文脈は
+            “数式を組む際に\codem{embed-math}に渡されたテキスト処理文脈” である\footnote{
+              正確には保持している文字色が\codem{math-color}で指定された文字色に更新されていたりするので少し違う．
+            }．
+          }%
+      }
+      +example{
+        “指数と添字がつけられたときにそれぞれ上下につけかえる” ような\codem{\\lim}は以下のようにして定義できる．
+
+        \d-code(```
+          let-math \lim =
+            let m-lim = math-char MathOp `lim` in
+              math-pull-in-scripts MathOp MathOp (fun moptS moptT -> (
+                match (moptS, moptT) with
+                | (None    , None    ) -> m-lim
+                | (Some(mS), None    ) -> math-lower m-lim mS
+                | (None    , Some(mT)) -> math-upper m-lim mT
+                | (Some(mS), Some(mT)) -> math-upper (math-lower m-lim mS) mT
+              ))
+        ```);%
+
+        実際に以下のように添字が下につけかえられる．
+
+        \d-code-and-block(```
+          +p{ ${\lim_{n \to \infty} a_n} }
+        ```)(open Sample in '<
+          +p{ ${\lim_{n \to \infty} a_n} }
+        >);%
+        \vskip(-0.75cm);%
+      }
+    >
+    +section{文字の扱いと文字クラス}<
+      +p{
+        \SATySFi;の数式で使う文字には\dfn{文字クラス}という概念が伴う．
+        これはイタリックやボールドローマン，スクリプト体，黒板太字といった分類であり，
+        \SATySFi;が数式を組む際には実際に数式中に書かれている文字をどの文字クラスに基づいてグリフに変換するかを
+        “文字クラスの指定” に基づいて行なう．
+        文字クラスは次のように定義される代数的データ型，
+        \type(Type.math-char-class);型によって扱われる：
+
+        \d-code(```
+          type math-char-class =
+            | MathItalic | MathBoldItalic | MathRoman | MathBoldRoman | MathScript
+            | MathBoldScript | MathFraktur | MathBoldFraktur | MathDoubleStruck
+        ```);%
+
+        \vals-explain({|math-char|math-big-char|})(Type.(math-class --> (string --> math))) {
+          \codem{math-char \meta{cls} \meta{s}}で文字列\codem{\meta{s}}を
+          属性\codem{\meta{cls}}の “アトム” にしたものを返す．
+          これは “使われた場所” での文字クラス指定によらず常に同一の文字列を返す．
+          \codem{math-big-char}は “大型演算子” 向けで，
+          OpenTypeの\code(`MATH`);テーブルに基づいて大きいグリフを選択する．
+        }%
+
+        \val-explain({math-char-class})(Type.(math-char-class --> (math --> math))) {
+          \codem{math-char-class \meta{cls} \meta{m}}で，
+          数式\codem{\meta{m}}を文字クラス\codem{\meta{cls}}で組むことを指定する．
+        }%
+
+        \val-explain({math-variant-char})%
+          (Type.(math-class --> (record [
+            ({italic}, string);
+            ({bold-italic}, string);
+            ({roman}, string);
+            ({bold-roman}, string);
+            ({script}, string);
+            ({bold-script}, string);
+            ({fraktur}, string);
+            ({bold-fraktur}, string);
+            ({double-struck}, string);
+          ] --> math))) {
+            各文字クラスが指定されている下で
+            どのような文字列に変換するか個別に指定した文字の “アトム” を返す．
+          }%
+      }
+      +example{
+        \LaTeX;での同名コマンドに対応する\codem{\\mathrm}と\codem{\\bm}は
+
+        \d-code(```
+          let-math \mathrm m = math-char-class MathRoman m
+          let-math \bm m = math-char-class BoldItalic m
+        ```);%
+
+        で定義できる．実際に使用すると以下のとおり：
+
+        \d-code-and-block(```
+          +p{ ${R, \mathrm{R}, \bm{R}} }
+        ```)<
+          +p{ ${R, \mathrm{R}, \bm{R}} }
+        >%
+        \vskip(-0.75cm);%
+      }
+      +example{
+        文字クラスに基づいて自動で変換文字列を切り替えるギリシア大文字は，次のように定義できる：
+
+        \d-code(```
+          let single cp = string-unexplode [cp]
+
+          let greek-uppercase cp cpb cpr cprb =
+            let s  = single cp  in let sb  = single cpb  in
+            let sr = single cpr in let srb = single cprb in
+              math-variant-char MathOrd (|
+                italic        = s;  bold-italic   = sb;
+                roman         = sr; bold-roman    = srb;
+                script        = s;  bold-script   = sb;
+                fraktur       = s;  bold-fraktur  = sb;
+                double-struck = s; |)
+
+          let-math \Gamma = greek-uppercase 0x1D6E4 0x1D71E 0x0393 0x1D6AA
+        ```);%
+
+        最後の行の4つの十六進数リテラルは，それぞれ
+        イタリック，ボールドイタリック，ローマン，ボールドローマンの
+        数式用ガンマが割り当てられているUnicodeコードポイントに対応する．
+      }
+    >
+    +section{括弧類}<
+      +p{
+        \SATySFi;に於ける数式の，縦幅可変の括弧の扱いはかなり大胆な方針を採っている．
+        括弧はグラフィックスで定義されるのである．
+        以下で登場する\type(Type.paren);型は
+        \type(Type.(length --> (length --> (length --> (length --> (color -->
+          product [inline-boxes; length --> length]))))));
+        という型のシノニムである．\type(Type.paren);型の函数は “括弧の片側の描き方” に相当するもので，
+        内容の高さ，内容の深さ，軸の高さ，文字サイズ，文字色をこの順に受け取り，
+        片側の括弧に相当するブロックボックス列と，添字・指数をカーニングするための函数との組を返す．
+        カーニング用の函数はベースラインを ${0} とし上を正方向とする “${y} 座標を受け取り，
+        その高さに添字や指数がつくとき，
+        どれだけカーニングを施せばよいかの長さを返す（正の長さを返すと添字・指数が括弧により近づく）．
+        これは，例えば丸括弧の場合，括弧の形に沿うようなカーニング用の函数を右側の括弧に指定することで，
+        ${\paren-fake{\frac{A}{\sqrt{1 + x^2}} + b}^2} ではなく
+        ${\paren{\frac{A}{\sqrt{1 + x^2}} + b}^2} のように自動で調整された位置に添字・指数をつけてくれる方が
+        数式把握上の誤解をきたしにくく望ましいだろう，という動機から設けられている機能である．
+
+        \val-explain({math-paren})(Type.(paren --> (paren --> (math --> math)))) {
+          \codem{math-paren \metasub(${1}){paren} \metasub(${2}){paren} \meta{m}}で
+          \codem{\metasub(${1}){paren}}を左括弧，
+          \codem{\metasub(${2}){paren}}を右括弧として
+          数式\codem{\meta{m}}を囲んだものを返す．
+          両\codem{\metasub(${i}){paren}}に渡される第1引数と第2引数は
+          \codem{\meta{m}}を組み上げたときの高さと深さである．
+        }%
+
+        \val-explain({math-paren-with-middle})%
+          (Type.(paren --> (paren --> (paren --> (list math --> math))))) {
+            \codem{math-paren-with-middle
+              \metasub(${1}){paren} \metasub(${2}){paren} \codem{\metasub(${3}){paren}} \meta{ms}}
+            の形で使う．
+            \codem{\metasub(${1}){paren}}を左括弧，
+            \codem{\metasub(${2}){paren}}を右括弧として使うのは
+            \codem{math-paren}と同様だが，
+            第3引数の括弧\codem{\metasub(${3}){paren}}で
+            第4引数の数式のリストを区切って括弧内に配置する点が異なっている．
+            ${\braket{\mathrm{e}^{i k' x}}{\frac{A}{a}}{\mathrm{e}^{i k x}}}
+            など，“区切り用の縦棒が左右の括弧とともに伸びる” ような数式の構成要素を組むのに有用である．
+          }%
+
+        “連続的に大きさの変わる” 括弧のグラフィックスを定義するのは非常に骨の折れる作業だが，
+        多くの入力に対して良いグリフを出力できる括弧の定義を与えられた時の満足はひとしおである．
+        \pkg{math}パッケージには著者がそんな風に地道に定義した\type(Type.paren);型のデータがいくつもあり，
+        例えば丸括弧の左右はそれぞれ\codem{Math.paren-left}および\codem{Math.paren-right}で
+        使うことができる．
+        なお，\pkg{math}コマンドの括弧は，入れ子になると自動で少しずつ大きくなる機能がついている．
+        尤も，不必要に外側の括弧を大きくすることは数式組版上不適切な処理と判断されうるので \cite[`Kieda2018`];，
+        利用時には留意されたい：
+
+        \d-code-and-block(```
+          +p{ ${\paren{a + \paren{b + \paren{c + \paren{d + e}}}}} }
+        ```)<
+          +p{ ${\paren{a + \paren{b + \paren{c + \paren{d + e}}}}} }
+        >%
+        \vskip(-0.5cm);%
+      }
+      +example{
+        左半開区間のコマンドは，次のようにして定義できる：
+
+        \d-code(```
+          let-math \opcls m1 m2 =
+            math-paren Math.paren-left Math.sqbracket-right ${#m1, #m2}
+        ```);%
+
+        \vskip(-0.95cm);%
+
+        \d-code-and-block(```
+          +p{ ${\opcls{0}{1}, \opcls{\frac{1}{2^n}}{1}} }
+        ```)(open Sample in '<
+          +p{ ${\opcls{0}{1}, \opcls{\frac{1}{2^n}}{1}} }
+        >);%
+        \vskip(-0.75cm);%
+      }
+    >
+  >
+  +chapter?:(`cross-reference`){相互参照}< #cross-reference; >
+  +chapter?:(`page-breaking`){ページ分割処理}< #page-breaking; >
+  +chapter?:(`future-work`){Future Work}< #future-work; >
+  +chapter?:(`specification`){言語仕様}< #specification; >
+>

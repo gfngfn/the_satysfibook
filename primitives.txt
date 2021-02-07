@@ -1,0 +1,211 @@
+-*- coding: utf-8 -*-
+
+ [ ] embed-block-top
+ [ ] embed-block-bottom
+ [ ] line-stack-top
+ [ ] line-stack-bottom
+
+ [/] raise-inline
+
+== コマンド定義：発展編 ==
+D[o] set-font-size
+D[o] get-font-size
+D[o] set-text-color
+D[o] get-text-color
+D[o] set-manual-rising
+D[o] ++
+D[o] +++
+D[o] inline-nil
+D[o] block-nil
+D[o] read-inline
+D[o] read-block
+D[o] line-break
+
+== 行分割 ==
+-- 行分割候補箇所とハイフネーション --
+L[o] discretionary
+L[o] set-word-break-penalty
+L[o] get-every-word-break
+L[o] set-every-word-break
+L[o] inline-skip
+L[o] inline-glue
+L[o] set-space-ratio
+L[/] set-hyphen-min
+L[o] set-hyphen-penalty
+L[o] embed-block-breakable
+
+-- 段落方向の長さ --
+L[o] set-leading
+L[o] set-min-gap-of-lines
+L[o] set-paragraph-margin
+L[/] set-min-paragraph-ascender-and-descender
+L[o] block-skip
+L[o] get-natural-metrics
+L[o] get-natural-length
+L[o] get-text-width
+
+== 文字組版 ==
+C[o] set-font
+C[o] get-font
+C[o] set-dominant-wide-script
+C[o] get-dominant-wide-script
+C[o] set-dominant-narrow-script
+C[o] get-dominant-narrow-script
+C[o] script-guard
+C[o] set-space-ratio-between-scripts
+C[/] get-space-ratio-between-scripts
+
+== グラフィックス ==
+-- パス生成 --
+G[o] unite-path
+G[o] shift-path
+G[o] get-path-bbox
+G[o] start-path
+G[o] line-to
+G[o] bezier-to
+G[o] terminate-path
+G[o] close-with-line
+G[o] close-with-bezier
+
+-- グラフィックス生成 --
+G[o] stroke
+G[o] fill
+G[/] dashed-stroke
+G[o] shift-graphics
+G[o] get-graphics-bbox
+G[o] draw-text
+G[o] inline-graphics
+G[/] inline-graphics-outer
+
+-- フレーム --
+G[o] inline-frame-outer
+G[o] inline-frame-inner
+G[o] inline-frame-fixed
+G[o] inline-frame-breakable
+G[o] block-frame-breakable
+
+-- 画像 --
+G[o] load-pdf-image
+G[o] load-image
+G[o] use-image-by-width
+
+-- 表 --
+G[o] tabular
+
+== 数式組版 ==
+-- 数式中の文字 --
+M[o] math-char
+M[o] math-big-char
+M[/] math-char-with-kern
+M[/] math-big-char-with-kern
+M[/] set-math-variant-char
+M[/] convert-string-for-math
+M[o] math-variant-char
+M[o] get-left-math-class
+M[o] get-right-math-class
+M[/] space-between-maths
+
+-- 数式 --
+M[/] math-concat
+M[/] math-sup
+M[/] math-sub
+M[o] math-frac
+M[o] math-upper
+M[o] math-lower
+M[o] math-group
+M[o] math-pull-in-scripts
+M[o] text-in-math
+
+-- 括弧類 --
+M[o] math-radical
+M[x] math-paren
+M[x] math-paren-with-middle
+M[ ] get-axis-height
+
+-- スタイル --
+M[o] math-color
+M[o] math-char-class
+
+-- 数式の使用 --
+M[o] embed-math
+M[o] set-math-font
+M[o] set-math-command
+
+== 相互参照 ==
+R[o] register-cross-reference
+R[o] get-cross-reference
+R[/] probe-cross-reference
+
+== ページ分割 ==
+P[o] page-break
+P[o] add-footnote
+P[o] hook-page-break
+P[o] clear-page
+P[o] get-initial-context
+
+== 基本演算 ==
+-- 整数 --
+A[o] +
+A[o] -
+A[o] *
+A[o] /
+A[o] mod
+A[o] ==
+A[o] >
+A[o] <
+A[o] <>
+A[o] >=
+A[o] <=
+
+-- 真偽値 --
+A[o] &&
+A[o] ||
+A[o] not
+
+-- 浮動小数点数 --
+A[o] float
+A[o] round
+A[o] +.
+A[o] -.
+A[o] *.
+A[o] /.
+A[o] sin
+A[o] asin
+A[o] cos
+A[o] acos
+A[o] tan
+A[o] atan
+A[o] atan2
+
+-- 長さ --
+A[o] +'
+A[o] -'
+A[o] *'
+A[o] /'
+A[o] <'
+A[o] >'
+
+-- 文字列 --
+A[o] ^
+A[o] arabic
+A[o] string-same
+A[o] string-sub
+A[o] string-length
+A[o] string-unexplode
+A[o] embed-string
+A[/] regexp-of-string
+A[/] string-match
+A[/] split-on-regexp
+A[o] split-into-lines
+
+-- その他 --
+A[o] !
+A[o] ::
+A[o] |>
+A[o] display-message
+
+== 非収録 ==
+/[/] set-language
+/[/] get-language
+/[/] string-sub-bytes
+/[/] string-byte-length
