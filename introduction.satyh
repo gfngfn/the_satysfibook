@@ -286,7 +286,6 @@ module Introduction = struct
         正しい出力を得られるコードは以下のとおりである：
 
         \d-code(```
-          % -*- coding: utf-8 -*-
           \documentclass{jsarticle}
           \usepackage[T1]{fontenc}
           \usepackage{lmodern}
@@ -361,7 +360,6 @@ module Introduction = struct
         まず，正しい出力を得る\SATySFi;のコードは以下のとおり：
 
         \d-code(```
-          % -*- coding: utf-8 -*-
           @require: stdjareport
           @import: local
 
