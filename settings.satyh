@@ -1,4 +1,3 @@
-% -*- coding: utf-8 -*-
 use package open Stdlib
 use package Code
 use package Itemize

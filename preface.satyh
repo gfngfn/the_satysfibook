@@ -1,4 +1,3 @@
-% -*- coding: utf-8 -*-
 use package open Stdlib
 use package open Itemize
 use open BookClass of `book-class`

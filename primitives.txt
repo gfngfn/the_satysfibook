@@ -1,5 +1,3 @@
--*- coding: utf-8 -*-
-
  [ ] embed-block-top
  [ ] embed-block-bottom
  [ ] line-stack-top
