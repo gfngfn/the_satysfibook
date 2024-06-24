@@ -1,7 +1,10 @@
 % -*- coding: utf-8 -*-
 use package open Stdlib
 use package Math
+use package Code
 use package FootnoteScheme
+use package HyphEnglish
+use package Unidata
 
 use package FontJunicode
 use package FontIpaEx
@@ -282,6 +285,9 @@ module BookClass = struct
 
     val get-standard-context wid =
       get-initial-context wid (command \Math.math)
+        |> set-code-text-command (command \Code.code)
+        |> set-hyphenation-dictionary HyphEnglish.hyphenation
+        |> set-unicode-char-database Unidata.unidata
         |> set-font-size 10pt
         |> set-leading 16pt
         |> set-dominant-wide-script Kana

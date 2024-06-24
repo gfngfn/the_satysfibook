@@ -1,4 +1,4 @@
 *~
 *.pdf
 *.satysfi-aux
-*.satysfi-lock
+*.satysfi-deps.yaml
