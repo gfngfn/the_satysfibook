@@ -1,103 +1,113 @@
 % -*- coding: utf-8 -*-
-@import: settings
+use package open Stdlib
+use package open Code
+use package open Math
+use package open Itemize
+use open BookClass of `book-class`
+use open Settings of `settings`
 
-let cross-reference = '<
-  +p{
-    \dfnje{相互参照}{cross reference}とは，
-    章節や図表の番号といった
-    “内容そのものに関係なく割り当てられ，かつ文書中の他の場所から指し示すときに使われる”
-    情報を自動的に取り扱う機能である．
-    \ref-chapter(`introduction`);でも述べたように，
-    相互参照はマークアップ方式の組版処理システムが（WYSIWYG方式のそれに比べて）
-    簡潔に実現することを得意としやすい機能だ．
-  }
-  +p{
-    \SATySFi;での相互参照の実現方法は\LaTeX;でのそれと基本的に同様であり，
-    “1回目の処理で相互参照用のIDとその内容を紐づけて外部ファイルに記録しておき，
-    2回目の処理で補完する” 方式をとっている．
-    ここで相互参照のIDとそれに紐づけられた（番号などの）内容を記録しておく外部ファイルが
-    \ref-chapter(`getting-started`);で登場し即座に無視されていた
-    \path{\meta{foo}.satysfi-aux}，すなわち
-    \dfnje{補助ファイル}{auxiliary file}なのである．
-    なお，上で述べた “1回目で記録して2回目で補完する” をより正確に言えば
-    “毎回組版処理が始まるときに（既に存在すれば）補助ファイルを読み込み，
-    相互参照のIDと内容の紐づけが不動点に達するまで組版処理を繰り返す” である\footnote{
-      相互参照の紐づけがいつまでも不動点に到達しないような意地悪な記述をすることも（残念ながら）できる．
-      この意地悪な挙動を型システムなどの言語機能によって排除することは原理的に難しい．
-      \SATySFi;は，相互参照の紐づけが不動点に達していなくても，あらかじめ定められた打ち切り回数に到達したら
+module CrossReference = struct
+  val cross-reference =
+    let open Book in
+    let open Pervasives in
+  '<
+    +p{
+      \dfnje{相互参照}{cross reference}とは，
+      章節や図表の番号といった
+      “内容そのものに関係なく割り当てられ，かつ文書中の他の場所から指し示すときに使われる”
+      情報を自動的に取り扱う機能である．
+      \ref-chapter(`introduction`);でも述べたように，
+      相互参照はマークアップ方式の組版処理システムが（WYSIWYG方式のそれに比べて）
+      簡潔に実現することを得意としやすい機能だ．
+    }
+    +p{
+      \SATySFi;での相互参照の実現方法は\LaTeX;でのそれと基本的に同様であり，
+      “1回目の処理で相互参照用のIDとその内容を紐づけて外部ファイルに記録しておき，
+      2回目の処理で補完する” 方式をとっている．
+      ここで相互参照のIDとそれに紐づけられた（番号などの）内容を記録しておく外部ファイルが
+      \ref-chapter(`getting-started`);で登場し即座に無視されていた
+      \path{\meta{foo}.satysfi-aux}，すなわち
+      \dfnje{補助ファイル}{auxiliary file}なのである．
+      なお，上で述べた “1回目で記録して2回目で補完する” をより正確に言えば
+      “毎回組版処理が始まるときに（既に存在すれば）補助ファイルを読み込み，
+      相互参照のIDと内容の紐づけが不動点に達するまで組版処理を繰り返す” である\footnote{
+        相互参照の紐づけがいつまでも不動点に到達しないような意地悪な記述をすることも（残念ながら）できる．
+        この意地悪な挙動を型システムなどの言語機能によって排除することは原理的に難しい．
+        \SATySFi;は，相互参照の紐づけが不動点に達していなくても，あらかじめ定められた打ち切り回数に到達したら
+
+        \console(```
+          ​  could not reach to fixpoint when resolving cross references.
+        ```);%
+
+        とログを表示して終了する．
+        打ち切り回数は ${4} 回である（今のところこれを変更する方法は提供していない）．
+      }．
+      \SATySFi;を使用している際に，
+      型検査を通った文書の処理でしばしば
 
       \console(```
-        ​  could not reach to fixpoint when resolving cross references.
+        ​  needs another trial for solving cross references...
+        ​  evaluating texts (2nd trial) ...
       ```);%
 
-      とログを表示して終了する．
-      打ち切り回数は ${4} 回である（今のところこれを変更する方法は提供していない）．
-    }．
-    \SATySFi;を使用している際に，
-    型検査を通った文書の処理でしばしば
+      などとログを出して最初からもう一度組版処理を始め，やがて
 
-    \console(```
-      ​  needs another trial for solving cross references...
-      ​  evaluating texts (2nd trial) ...
-    ```);%
+      \console(```
+        ​  all cross references were solved.
+      ```);%
 
-    などとログを出して最初からもう一度組版処理を始め，やがて
+      などと報告して（正常にPDFを出力して）終了するのに気づいた方も多いだろうが，
+      これは相互参照の紐づけが不動点に達するまで組版処理を繰り返しているのである．
+    }
+    +p{
+      実現方法からもわかるように，相互参照はかなり原始的な定式化によって成り立っている．
+      これはひとえに相互参照を必ず “1回の処理” で整合させるのが本質的に困難なことに起因する．
+      “1回の処理” で整合させる本質的な困難さを感じ取れる大雑把な例を以下に挙げてみよう：\quad;
+      相互参照で或る章節のページ番号を
+      （「${p} ページの第 ${m}.${n} 節を見よ」の ${p} として）挿入したいとする．
+      そのページ番号がいくつなのかはページ分割をするまでわからないから，
+      ページ番号としてどのような内容を本文中に挿入したらよいのか事前には決められない．
+      \codem{inline-graphics}と同様の要領で内容をあらかじめ未定にしておいて
+      ページ分割後に内容を決定してはどうかと考えるかもしれないが，
+      ページ番号の内容がグリフ列として版面上どれだけの幅を占めるかさえ事前にはわからない．
+      このように，内容がページ分割結果に依存する処理は
+      （当然ながらどこでページ分割するかも内容に依存しているという逆向きの依存もあるので）
+      “1回の処理” で整合させることが一般にきわめて困難なのである．
+    }
+    +p{
+      仕組みが原始的なだけあって，相互参照機能を実現しているプリミティヴは非常に単純だ．
+      以下の2種類のみである：
 
-    \console(```
-      ​  all cross references were solved.
-    ```);%
+      \val-explain?(index = `register-cross-reference`)({register-cross-reference})%
+        (Type.(string --> (string --> unit))) {
+          \codem{register-cross-reference \meta{key} \meta{value}}で
+          相互参照のID \codem{\meta{key}}から内容\codem{\meta{value}}への紐づけを登録する．
+          既に\codem{\meta{key}}から何らかの内容への紐づけが登録されていた場合は
+          上書きされ，また古い内容と新しい内容が文字列として異なっていた場合は
+          相互参照が不動点に達していないという理由で\SATySFi;処理系に再処理を促す．
+          \codem{\meta{key}}からの紐づけが元々登録されていなかった場合も
+          同様に再処理を促す．
+        }%
 
-    などと報告して（正常にPDFを出力して）終了するのに気づいた方も多いだろうが，
-    これは相互参照の紐づけが不動点に達するまで組版処理を繰り返しているのである．
-  }
-  +p{
-    実現方法からもわかるように，相互参照はかなり原始的な定式化によって成り立っている．
-    これはひとえに相互参照を必ず “1回の処理” で整合させるのが本質的に困難なことに起因する．
-    “1回の処理” で整合させる本質的な困難さを感じ取れる大雑把な例を以下に挙げてみよう：\quad;
-    相互参照で或る章節のページ番号を
-    （「${p} ページの第 ${m}.${n} 節を見よ」の ${p} として）挿入したいとする．
-    そのページ番号がいくつなのかはページ分割をするまでわからないから，
-    ページ番号としてどのような内容を本文中に挿入したらよいのか事前には決められない．
-    \codem{inline-graphics}と同様の要領で内容をあらかじめ未定にしておいて
-    ページ分割後に内容を決定してはどうかと考えるかもしれないが，
-    ページ番号の内容がグリフ列として版面上どれだけの幅を占めるかさえ事前にはわからない．
-    このように，内容がページ分割結果に依存する処理は
-    （当然ながらどこでページ分割するかも内容に依存しているという逆向きの依存もあるので）
-    “1回の処理” で整合させることが一般にきわめて困難なのである．
-  }
-  +p{
-    仕組みが原始的なだけあって，相互参照機能を実現しているプリミティヴは非常に単純だ．
-    以下の2種類のみである：
+      \val-explain?(index = `get-cross-reference`)({get-cross-reference})%
+        (Type.(string --> (option string))) {
+          \codem{get-cross-reference \meta{key}}という形で使い，
+          既に\codem{\meta{key}}に紐づけられた
+          何らかの内容\codem{\meta{value}}が登録されている場合は
+          \codem{Some(\meta{value})}が返される．
+          \codem{\meta{key}}に紐づけられた内容が登録されていない場合は
+          \codem{None}を返す．
+        }%
 
-    \val-explain?:(`register-cross-reference`)({register-cross-reference})%
-      (Type.(string --> (string --> unit))) {
-        \codem{register-cross-reference \meta{key} \meta{value}}で
-        相互参照のID \codem{\meta{key}}から内容\codem{\meta{value}}への紐づけを登録する．
-        既に\codem{\meta{key}}から何らかの内容への紐づけが登録されていた場合は
-        上書きされ，また古い内容と新しい内容が文字列として異なっていた場合は
-        相互参照が不動点に達していないという理由で\SATySFi;処理系に再処理を促す．
-        \codem{\meta{key}}からの紐づけが元々登録されていなかった場合も
-        同様に再処理を促す．
-      }%
+      なお，登録されていない相互参照ID \codem{\meta{key}}が
+      \codem{get-cross-reference}によって取得を試みられ，
+      そのまま相互参照が不動点に達して終了した場合，\SATySFi;は
 
-    \val-explain?:(`get-cross-reference`)({get-cross-reference})%
-      (Type.(string --> (option string))) {
-        \codem{get-cross-reference \meta{key}}という形で使い，
-        既に\codem{\meta{key}}に紐づけられた
-        何らかの内容\codem{\meta{value}}が登録されている場合は
-        \codem{Some(\meta{value})}が返される．
-        \codem{\meta{key}}に紐づけられた内容が登録されていない場合は
-        \codem{None}を返す．
-      }%
+      \console(```
+        some cross references were not solved:
+      ```);
 
-    なお，登録されていない相互参照ID \codem{\meta{key}}が
-    \codem{get-cross-reference}によって取得を試みられ，
-    そのまま相互参照が不動点に達して終了した場合，\SATySFi;は
-
-    \console(```
-      some cross references were not solved:
-    ```);
-
-    という文言とともにそのような\codem{\meta{key}}を列挙して報告する．
-  }
->
+      という文言とともにそのような\codem{\meta{key}}を列挙して報告する．
+    }
+  >
+end

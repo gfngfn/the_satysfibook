@@ -1,43 +1,110 @@
 % -*- coding: utf-8 -*-
-@require: standalone
-@require: pervasives
-@import: settings
+#[config (|
+  registries = [
+    (|
+      name = `default`,
+      remote =
+        Git(|
+          url = `https://github.com/SATySFi/default-registry`,
+          branch = `format-1`,
+        |)
+    |)
+  ],
+  dependencies = [
+    (| name = `stdlib`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `math`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `code`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `itemize`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `proof`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `footnote-scheme`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `font-junicode`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `font-latin-modern-math`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `font-ipa-ex`, registry = `default`, requirement = `^0.0.1` |),
+  ],
+|)]
+use package open Stdlib
+use package open Code
+use package open Math
+use package FontJunicode
+use package FontIpaEx
+use package FontLatinModernMath
+use open BookClass of `book-class`
+use open Settings of `settings`
 
 
-let-inline ctx \local-table f =
+let inline ctx \math m =
+  embed-math ctx (read-math ctx m)
+in
+
+let standalone bt =
+  let font-latin-roman = (FontJunicode.normal, 1., 0.) in
+  let font-cjk-mincho  = (FontIpaEx.mincho, 0.88, 0.) in
+  let ctx =
+    get-initial-context 440pt (command \math)
+      |> set-dominant-narrow-script Latin
+      |> set-dominant-wide-script Kana
+      |> set-font Kana           font-cjk-mincho
+      |> set-font HanIdeographic font-cjk-mincho
+      |> set-font Latin          font-latin-roman
+      |> set-font OtherScript    font-latin-roman
+      |> set-math-font FontLatinModernMath.main
+  in
+  let bb = read-block ctx bt in
+  page-break PaperSize.a4
+    (fun _ -> (|
+      text-origin = (80pt, 100pt),
+      text-height = 630pt,
+    |))
+    (fun _ -> (|
+      header-origin  = (0pt, 0pt),
+      header-content = block-nil,
+      footer-origin  = (0pt, 0pt),
+      footer-content = block-nil,
+    |))
+    bb
+in
+
+let inline ctx \local-table f =
   let pads = (10pt, 10pt, 3pt, 3pt) in
   let c it = NormalCell(pads, inline-fil ++ read-inline ctx it ++ inline-fil) in
   let l it = NormalCell(pads, read-inline ctx it ++ inline-fil) in
   f c l
+in
 
 let top-and-bottom-rules xs ys =
   match (xs, List.reverse xs, ys, List.reverse ys) with
   | (xL :: _, xR :: _, yT :: y2 :: _, yB :: _) ->
-      [
-        stroke 1pt Color.black (Gr.line (xL, yT) (xR, yT));
-        stroke 0.5pt Color.black (Gr.line (xL, y2) (xR, y2));
-        stroke 1pt Color.black (Gr.line (xL, yB) (xR, yB));
+      unite-graphics [
+        stroke 1pt Color.black (Gr.line (xL, yT) (xR, yT)),
+        stroke 0.5pt Color.black (Gr.line (xL, y2) (xR, y2)),
+        stroke 1pt Color.black (Gr.line (xL, yB) (xR, yB)),
       ]
-  | _ -> []
+  | _ -> Gr.empty
+  end
+in
 
-let-block ctx +pn it =
+let block ctx +pn it =
   line-break true true ctx
     (read-inline ctx it ++ inline-fil)
+in
 
-let-block ctx +small bt =
+let block ctx +small bt =
   let ctx =
     ctx |> set-font-size 9pt
         |> set-leading 13pt
   in
   read-block ctx bt
+in
 
-let-block ctx +vskip len =
+let block ctx +vskip len =
   block-skip len
+in
 
-let-inline ctx \raise len it =
+let inline ctx \raise len it =
   raise-inline len (read-inline ctx it)
+in
 
-let-inline ctx \codemH it =
+let inline ctx \codemH it =
   let ib-strut = strut 8pt 3pt in
   let ib =
     let ctx =
@@ -49,8 +116,9 @@ let-inline ctx \codemH it =
   let pads = (2pt, 2pt, 2pt, 2pt) in
   let (_, decoH, _, _) = HDecoSet.rectangle-round-fill 4pt 2pt code-background in
     script-guard Latin (inline-frame-outer pads decoH ib)
+in
 
-let-inline ctx \codemT it =
+let inline ctx \codemT it =
   let ib-strut = strut 8pt 3pt in
   let ib =
     let ctx =
@@ -62,17 +130,22 @@ let-inline ctx \codemT it =
   let pads = (2pt, 2pt, 2pt, 2pt) in
   let (_, _, _, decoT) = HDecoSet.rectangle-round-fill 4pt 2pt code-background in
     script-guard Latin (inline-frame-outer pads decoT ib)
+in
 
-let-inline ctx \important =
+let inline ctx \important =
   let ib = read-inline (ctx |> set-dominant-narrow-script Kana) {●} in
   let (w, _, _) = get-natural-metrics ib in
     inline-skip (-2pt -' w) ++ ib
+in
 
-let cell-wid = 6cm
+let cell-wid = 6cm in
 
-let-inline ctx \dummy-latin =
+let inline ctx \dummy-latin =
   inline-skip 3pt
 in
+
+let open Book in
+let open Pervasives in
 
 standalone '<+small<
   +vskip(-2cm);
@@ -83,24 +156,24 @@ standalone '<+small<
   +centering{
     \local-table(fun c l -> (
       tabular [
-        [c {位置}; c {誤}; c {正}; ];
+        [c {位置}, c {誤}, c {正}, ],
 
-        [l {\important;1頁下から8行目}; l {前者}; l {後者}; ];
-        [l {\important;1頁下から7行目}; l {後者}; l {前者}; ];
-        [l {12頁下から5行目}; l {\pkg{std-jareport}}; l {\pkg{stdjareport}}; ];
-        [l {15頁脚註8中}; l {プログラム引数}; l {式引数}; ];
-        [l {18頁3行目}; l {\codem{\\paren\{a + b\}}}; l {\codem{\\paren\{a + b\} x}}; ];
-        [l {18頁11行目}; l {${\paren{a + b}}}; l {${\paren{a + b} x}}; ];
-        [l {18頁13行目}; l {プログラム引数}; l {式引数}; ];
-        [l {20頁下から3行目}; l {\pkg{stdjare-port}}; l {\pkg{stdjareport}}; ];
-        [l {24頁下から6行目}; l {\codem{\#t\;}}; l {\codem{\#it\;}}; ];
-        [l {35頁脚註19中}; l {なお．}; l {なお，}; ];
-        [l {36頁下から4行目};
-          l {長さ\codem{\metasub(${1}){l}}\dummy-latin;が長さ\codem{\metasub(${1}){l}}\dummy-latin;の};
-          l {長さ\codem{\metasub(${1}){l}}\dummy-latin;が長さ\codem{\metasub(${2}){l}}\dummy-latin;の};
-        ];
-        [ l {38頁15行目}; l {置き換えられたものの計算する}; l {置き換えられたものを計算する}];
-        [l {\important;39頁下から4行目};
+        [l {\important;1頁下から8行目}, l {前者}, l {後者}, ],
+        [l {\important;1頁下から7行目}, l {後者}, l {前者}, ],
+        [l {12頁下から5行目}, l {\pkg{std-jareport}}, l {\pkg{stdjareport}}, ],
+        [l {15頁脚註8中}, l {プログラム引数}, l {式引数}, ],
+        [l {18頁3行目}, l {\codem{\\paren\{a + b\}}}, l {\codem{\\paren\{a + b\} x}}, ],
+        [l {18頁11行目}, l {${\paren{a + b}}}, l {${\paren{a + b} x}}, ],
+        [l {18頁13行目}, l {プログラム引数}, l {式引数}, ],
+        [l {20頁下から3行目}, l {\pkg{stdjare-port}}, l {\pkg{stdjareport}}, ],
+        [l {24頁下から6行目}, l {\codem{\#t\;}}, l {\codem{\#it\;}}, ],
+        [l {35頁脚註19中}, l {なお．}, l {なお，}, ],
+        [l {36頁下から4行目},
+          l {長さ\codem{\metasub(${1}){l}}\dummy-latin;が長さ\codem{\metasub(${1}){l}}\dummy-latin;の},
+          l {長さ\codem{\metasub(${1}){l}}\dummy-latin;が長さ\codem{\metasub(${2}){l}}\dummy-latin;の},
+        ],
+        [ l {38頁15行目}, l {置き換えられたものの計算する}, l {置き換えられたものを計算する}],
+        [l {\important;39頁下から4行目},
           l {\parbox(cell-wid)<+pn{
             \type(Type.tymtausub ${1});型の第1引数と
             \type(Type.tymtausub ${2});型の第2引数を受け取って
@@ -108,7 +181,7 @@ standalone '<+small<
             \type(Type.tymtausub ${1});型の第1引数を受け取って
             「\type(Type.tymtausub ${2});型の第2引数を受け取って
             \type(Type.tymtau);型の値を返す函数」を返す函数ともみなせる．
-          }>};
+          }>},
           l {\parbox(cell-wid)<+pn{
             \type(Type.tymtausub ${1});型の第1引数と
             \type(Type.tymtausub ${2});型の第2引数を受け取って
@@ -116,44 +189,44 @@ standalone '<+small<
             \type(Type.tymtausub ${1});型の引数を受け取って
             「\type(Type.tymtausub ${2});型の引数を受け取って
             \type(Type.tymtau);型の値を返す函数」を返す函数ともみなせる．
-          }>};
-        ];
-        [l {49頁4行目};
-          l {\codem{\metasub(${n}){Ctr} of \metasub(${1}){ty}}};
-          l {\codem{\metasub(${n}){Ctr} of \metasub(${n}){ty}}};
-        ];
-        [l {\important;53頁11行目};
-          l {\type(Type.(tymalpha --> (option tymalpha --> tymalpha)));};
-          l {\type(Type.(forall ${\alpha} (tymalpha --> (option tymalpha --> tymalpha))));};
-        ];
-        [l {\important;54頁7行目};
-          l {\parbox(cell-wid)<+pn{\codem{3 :: (1 :: (4 :: 1 :: (5 :: 9 :: 2)))}}>};
-          l {\parbox(cell-wid)<+pn{\codem{3 :: (1 :: (4 :: (1 :: (5 :: (9 :: (2 :: []))))))}}>};
-        ];
-        [l {56頁下から5行目}; l {SML\#の基礎づける型}; l {SML\#を基礎づける型システム}; ];
-        [l {57頁2行目}; l {
+          }>},
+        ],
+        [l {49頁4行目},
+          l {\codem{\metasub(${n}){Ctr} of \metasub(${1}){ty}}},
+          l {\codem{\metasub(${n}){Ctr} of \metasub(${n}){ty}}},
+        ],
+        [l {\important;53頁11行目},
+          l {\type(Type.(tymalpha --> (option tymalpha --> tymalpha)));},
+          l {\type(Type.(forall ${\alpha} (tymalpha --> (option tymalpha --> tymalpha))));},
+        ],
+        [l {\important;54頁7行目},
+          l {\parbox(cell-wid)<+pn{\codem{3 :: (1 :: (4 :: 1 :: (5 :: 9 :: 2)))}}>},
+          l {\parbox(cell-wid)<+pn{\codem{3 :: (1 :: (4 :: (1 :: (5 :: (9 :: (2 :: []))))))}}>},
+        ],
+        [l {56頁下から5行目}, l {SML\#の基礎づける型}, l {SML\#を基礎づける型システム}, ],
+        [l {57頁2行目}, l {
           \type(Type.(record [
-            ({\metasub(${1}){label}}, tymtausub ${1});
-            ({${\cdots}}, of-math ${\cdots});
-            ({\metasub(${n}){label}}, tymtausub ${n});
+            ({\metasub(${1}){label}}, tymtausub ${1}),
+            ({${\cdots}}, of-math ${\cdots}),
+            ({\metasub(${n}){label}}, tymtausub ${n}),
           ]));
-        }; l {
+        }, l {
           ${\Type.record-paren{
             \text!{\metasub(${1}){label}} : \mtype!(Type.(tymtausub ${1}))\;
             \ \cdots\;
             \ \text!{\metasub(${n}){label}} : \mtype!(Type.(tymtausub ${n}))
           }}
-        }];
-        [l {57頁3行目}; l {レコードそのもののの型つけ}; l {レコードそのものの型つけ}; ];
-        [l {64頁図4.1中}; l {評価用形式}; l {実行時表現}; ];
-        [l {65頁最終行};
-          l {\parbox(cell-wid)<+console(`! [Syntax error at Typechecker]`);>};
-          l {\parbox(cell-wid)<+console(`! [Type Error]`);>};
-        ];
-        [l {\important;72頁8行目}; l {\codem{get-font-size}}; l {\codem{set-font-size}}; ];
-        [l {76頁6行目}; l {\codem{\metasub(${1}){b}}；\quad;は}; l {\codem{\metasub(${1}){b}}：}; ];
-        [l {76頁8行目}; l {\codem{\meta{ctx}}；}; l {\codem{\meta{ctx}}：}; ];
-        [l {80頁15行目}; l {プログラム引数}; l {式引数}; ];
+        }],
+        [l {57頁3行目}, l {レコードそのもののの型つけ}, l {レコードそのものの型つけ}, ],
+        [l {64頁図4.1中}, l {評価用形式}, l {実行時表現}, ],
+        [l {65頁最終行},
+          l {\parbox(cell-wid)<+console(`! [Syntax error at Typechecker]`);>},
+          l {\parbox(cell-wid)<+console(`! [Type Error]`);>},
+        ],
+        [l {\important;72頁8行目}, l {\codem{get-font-size}}, l {\codem{set-font-size}}, ],
+        [l {76頁6行目}, l {\codem{\metasub(${1}){b}}；\quad;は}, l {\codem{\metasub(${1}){b}}：}, ],
+        [l {76頁8行目}, l {\codem{\meta{ctx}}；}, l {\codem{\meta{ctx}}：}, ],
+        [l {80頁15行目}, l {プログラム引数}, l {式引数}, ],
       ] top-and-bottom-rules
     ));
   }
@@ -163,65 +236,65 @@ standalone '<+small<
   +centering{
     \local-table(fun c l -> (
       tabular [
-        [c {位置}; c {誤}; c {正}; ];
+        [c {位置}, c {誤}, c {正}, ],
 
-        [l {\important;81頁10行目};
+        [l {\important;81頁10行目},
           l {
             \parbox(cell-wid)<+p{\align[
               ${|| \text!{\codem{List.fold-left (${\oplus}) \meta{i}
                     [\metasub(${1}){v}\; \metasub(${2}){v}\; ${\cdots}\; \metasub(${n}){v}]}}
-              |};${|
+              |},${|
                 |\longrightarrow
                   \text!{\codem{List.fold-left (\meta{i} ${\oplus} \metasub(${1}){v})
                     [\metasub(${2}){v}\; ${\cdots}\; \metasub(${n}){v}]}}
-              |};${|
+              |},${|
                 |\longrightarrow
                   \text!{\codem{List.fold-left ((\meta{i} ${\oplus} \metasub(${1}){v}) ${\oplus} \metasub(${2}){v})
                     [ ${\cdots}\; \metasub(${n}){v}]}}
-              |};${|
+              |},${|
                 |\math-skip!(6pt)\vdots
-              |};${|
+              |},${|
                 |\longrightarrow
                   \text!{\codem{((${\cdots}(((\meta{i} ${\oplus} \metasub(${1}){v}) ${\oplus} \metasub(${2}){v})
                     ${\oplus} \metasub(${2}){v}) ${\oplus \cdots}) ${\oplus} \metasub(${n}){v})}}
-              |};
+              |},
             ];}>
-          };
+          },
           l {
             \parbox(cell-wid)<+p{\align[
               ${|| \text!{\codem{List.fold-left (${\oplus}) \meta{i}
                     [\metasub(${1}){v}\; \metasub(${2}){v}\; ${\cdots}\; \metasub(${n}){v}]}}
-              |};${|
+              |},${|
                 |\longrightarrow
                   \text!{\codem{List.fold-left (${\oplus}) (\meta{i} ${\oplus} \metasub(${1}){v})
                     [\metasub(${2}){v}\; ${\cdots}\; \metasub(${n}){v}]}}
-              |};${|
+              |},${|
                 |\longrightarrow
                   \text!{\codem{List.fold-left (${\oplus}) ((\meta{i} ${\oplus} \metasub(${1}){v}) ${\oplus} \metasub(${2}){v})
                     [ ${\cdots}\; \metasub(${n}){v}]}}
-              |};${|
+              |},${|
                 |\math-skip!(6pt)\vdots
-              |};${|
+              |},${|
                 |\longrightarrow
                   \text!{\codemH{List.fold-left (${\oplus})\ }}
-              |};${|
+              |},${|
                 | \math-skip!(1cm)\text!{\raise(5mm){\codemT{
                     ((${\cdots}(((\meta{i} ${\oplus} \metasub(${1}){v}) ${\oplus} \metasub(${2}){v})
                       ${\oplus} \metasub(${3}){v}) ${\oplus \cdots}) ${\oplus} \metasub(${n}){v}) []
                   }}}
-              |};${|
+              |},${|
                 |\longrightarrow
                   \text!{\codem{((${\cdots}(((\meta{i} ${\oplus} \metasub(${1}){v}) ${\oplus} \metasub(${2}){v})
                     ${\oplus} \metasub(${3}){v}) ${\oplus \cdots}) ${\oplus} \metasub(${n}){v})}}
-              |};
+              |},
             ];}>
-          };
-        ];
-        [l {92頁2行目}; l {にはには}; l {には}; ];
-        [l {95頁下から12行目}; l {SATySFi}; l {\SATySFi;}; ];
-        [l {\important;121頁12行目}; l {\codem{\meta{x}}\dummy-latin;を}; l {\codem{\meta{x}}\dummy-latin;は変数を}; ];
-        [l {121頁14, 17行目}; l {プログラム引数}; l {式引数}; ];
-        [l {126頁下から6行目}; l {\codem{\\bb}}; l {\codem{\\bm}}; ];
+          },
+        ],
+        [l {92頁2行目}, l {にはには}, l {には}, ],
+        [l {95頁下から12行目}, l {SATySFi}, l {\SATySFi;}, ],
+        [l {\important;121頁12行目}, l {\codem{\meta{x}}\dummy-latin;を}, l {\codem{\meta{x}}\dummy-latin;は変数を}, ],
+        [l {121頁14, 17行目}, l {プログラム引数}, l {式引数}, ],
+        [l {126頁下から6行目}, l {\codem{\\bb}}, l {\codem{\\bm}}, ],
       ] top-and-bottom-rules
     ));%
   }

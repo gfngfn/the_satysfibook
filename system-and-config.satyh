@@ -1,270 +1,283 @@
 % -*- coding: utf-8 -*-
-@import: settings
+use package open Stdlib
+use package open Code
+use package open Math
+use package open Itemize
+use package open Tabular
+use open BookClass of `book-class`
+use open Settings of `settings`
 
-let system-and-config = '<
-  +p{
-    この章では\SATySFi;がどのようにフォントやパッケージや設定ファイルを
-    読み込んで使用するかといったシステムに関する説明を提供する．
-    \SATySFi;が使用するフォントファイル，標準パッケージ，設定ファイルなどの一式は，
-    次のような構造をもつ\dfnje{ライブラリルート}{library root}と呼ばれるディレクトリの
-    下に収められている：
-  }
-  +centered-graphics(14cm)(11cm)(fun r -> (
-    (stroke 0.5pt Color.black (Gr.rectangle (0cm, 0cm) (14cm, 11cm))) ::
-    draw-directory-tree r (1cm, 10.5cm) 0.75cm 0.5cm
-      (Directory({\path{\meta{LIBROOT/}}}, [
-        Directory({\path{dist/}}, [
-          Directory({\path{fonts/}}, [
-            File{\ ${\vdots}};
-          ]);
-          Directory({\path{hash/}}, [
-            File{\path{default-font.satysfi-hash}};
-            File{\path{fonts.satysfi-hash}};
-            File{\path{mathfonts.satysfi-hash}};
-          ]);
-          Directory({\path{hyph/}}, [
-            File{\path{english.satysfi-hyph}};
-            File{\ ${\vdots}};
-          ]);
-          Directory({\path{packages/}}, [
-            File{\path{gr.satyh}};
-            File{\path{list.satyg}};
-            File{\path{stdjareport.satyh}};
-            File{\ ${\vdots}};
-          ]);
-          Directory({\path{unidata/}}, [
-            File{\path{EastAsianWidth.txt}};
-            File{\path{LineBreak.txt}};
-            File{\path{Scripts.txt}};
-            File{\ ${\vdots}};
-          ]);
-        ]);
-      ]))
-  ));
-  +p{
-    \meta{LIBROOT/}は，UNIX系OSでは
+module SystemAndConfig = struct
+  val system-and-config =
+    let open Book in
+    let open Pervasives in
+  '<
+    +p{
+      この章では\SATySFi;がどのようにフォントやパッケージや設定ファイルを
+      読み込んで使用するかといったシステムに関する説明を提供する．
+      \SATySFi;が使用するフォントファイル，標準パッケージ，設定ファイルなどの一式は，
+      次のような構造をもつ\dfnje{ライブラリルート}{library root}と呼ばれるディレクトリの
+      下に収められている：
+    }
+    +centered-graphics(14cm)(11cm)(fun r -> (
+      unite-graphics [
+        stroke 0.5pt Color.black (Gr.rectangle (0cm, 0cm) (14cm, 11cm)),
+        draw-directory-tree r (1cm, 10.5cm) 0.75cm 0.5cm
+          (Directory({\path{\meta{LIBROOT/}}}, [
+            Directory({\path{dist/}}, [
+              Directory({\path{fonts/}}, [
+                File{\ ${\vdots}},
+              ]),
+              Directory({\path{hash/}}, [
+                File{\path{default-font.satysfi-hash}},
+                File{\path{fonts.satysfi-hash}},
+                File{\path{mathfonts.satysfi-hash}},
+              ]),
+              Directory({\path{hyph/}}, [
+                File{\path{english.satysfi-hyph}},
+                File{\ ${\vdots}},
+              ]),
+              Directory({\path{packages/}}, [
+                File{\path{gr.satyh}},
+                File{\path{list.satyg}},
+                File{\path{stdjareport.satyh}},
+                File{\ ${\vdots}},
+              ]),
+              Directory({\path{unidata/}}, [
+                File{\path{EastAsianWidth.txt}},
+                File{\path{LineBreak.txt}},
+                File{\path{Scripts.txt}},
+                File{\ ${\vdots}},
+              ]),
+            ]),
+          ]))
+      ]
+    ));
+    +p{
+      \meta{LIBROOT/}は，UNIX系OSでは
 
-    \listing{
-      * \path{~/.satysfi/}
-      * \path{/usr/local/share/satysfi/}
-      * \path{/usr/share/satysfi/}
-    }%
-
-    のいずれかであり，\SATySFi;は設定ファイル\path{\meta{foo}}が必要となった際に
-    \no-break{\path{~/.satysfi/\meta{foo}}}，
-    \no-break{\path{/usr/local/share/satysfi/\meta{foo}}}，
-    \no-break{\path{/usr/share/satysfi/\meta{foo}}}
-    \ をこの優先度で探し，最初に存在したものを用いる．
-    すなわち，\path{\meta{LIBROOT/}}はファイル\path{\meta{foo}}ごとに決定される．
-    上記パスの2箇所以上にファイルを置く場合は，この点に注意する必要がある．
-    Windowsの場合は\path{\meta{LIBROOT/}}として
-
-    \listing{
-      * \path{\%userprofile\%\\.satysfi\\}
-      * \path{\%SATYSFI_RUNTIME\%\\}
-    }%
-
-    がこの優先度で使われる \cite[`satysfi-cross-windows`];．
-    以降，設定ファイル類は\path{\meta{LIBROOT/}}からの相対パスで書くこととする．
-  }
-  +section{各ディレクトリの役割}<
-    +p{
-      まず，\path{\meta{LIBROOT/}}の直下には\path{dist/}がある．
-      これは内容物が将来的にパッケージマネージャやディストリビューションによって操作される
-      （すなわち，ユーザが手で内容物を変更するべきでない）ことを意識して
-      “distribution” から命名されている．
-      現在はこのディレクトリ以下の内容をユーザが操作することは非推奨ではなく，
-      また（カレントディレクトリが\path{\meta{LIBROOT/}}以下の状態で\SATySFi;を起動しない限り）
-      \SATySFi;が内容を変更することはない．
-      将来的には\path{dist/}の他に\path{local/}を設け，
-      これにユーザが自身が作成したパッケージ類を格納できるようにすることを想定している．
-    }
-    +p{
-      \path{dist/hash/}と\path{dist/unidata/}は設定ファイルの格納場所であり，
-      どのような名前のファイルが直下に置かれている必要があるかも決められている．
-      他のディレクトリは直下にデータを格納する．
-    }
-    +p{
-      \path{dist/hash/}には\SATySFi;コードからデータにアクセスするための
-      いくつかの設定ファイルが格納されており，それぞれ\dfn{YOJSON形式}
-      （\dfn{yojson}パッケージ \cite[`yojson`];により拡張されたJSON形式をこう呼ぶことにする）
-      で記述されている．
-    }
-    +p{
-      \path{dist/unidata/}はUnicodeコードポイントを
-      組版処理中にどのように扱うかを規定したファイルを格納しており，
-      これはUnicode Databaseとして公開されているテキストファイル群の一部である．
-    }
-    +p{
-      \path{dist/fonts/}は\SATySFi;で使用するOpenTypeフォントファイルを直下に格納する．
-    }
-    +p{
-      \path{dist/hyph/}はハイフネーション辞書を直下に格納する．
-      現状では英語のハイフネーションのみに対応しており，
-      \path{dist/hyph/english.satysfi-hyph}というデータのみを利用するが，
-      将来的に多言語へと拡張し，\path{dist/hash/}以下でハイフネーション辞書の設定を扱う想定である．
-    }
-    +p{
-      \path{dist/packages/}はパッケージ類を格納する．
-      パッケージファイルを
-      \quote{
-        \path{dist/packages/\meta{path/to/foo}\meta-or{|.satyh|.satyg|}}
-      }%
-      というパスに置くと，パッケージとして
-      \d-codem{
-        \@require: \meta{path/to/foo}
-      }%
-      で読み込めるようになる．
-      拡張子が\path{.satyh}のものと\path{.satyg}のものが両方存在する場合は
-      \path{.satyh}が優先される\footnote{
-        拡張子\path{.satyg}は，
-        テキストモードとPDFモードとで
-        共通に使えるパッケージファイルにつけることを想定している．
-        これは将来的な拡張の都合であり，現在はどちらでも特に違いはない．
-      }．
-    }
-  >
-  +section{フォント設定}<
-    +p{
-      \SATySFi;で使用できるフォントは
-      \dfnje{フォントハッシュファイル}{font hash file}：
-      \quote{
-        \path{dist/hash/fonts.satysfi-hash}
-      }%
-      に設定の記載のあるフォントである．
-      ユーザが新しいフォントを\SATySFi;で使えるように設定したい場合は，
-      \path{dist/fonts/}直下に所望のフォントファイル\path{\meta{bar}.otf}を置き，
-      フォントハッシュファイル内のYOJSONのディクショナリに
-
-      \d-codem{
-          "\meta{bar}": \<Single \{"src-dist": "\meta{bar}.otf"\}\>
+      \listing{
+        * \path{~/.satysfi/}
+        * \path{/usr/local/share/satysfi/}
+        * \path{/usr/share/satysfi/}
       }%
 
-      というエントリを追記する．
-      この設定を加えることでフォント名\codem{\`\meta{bar}\`}が\SATySFi;で使えるようになる．
-      フォントの（拡張子を除いた）ファイル名とフォント名は一致していなくても構わない．
-      所望のフォントがTrueType Collectionのフォントファイル
-      \path{\meta{baz}.ttc}の ${n} 番目の要素\footnote{番号は ${1}-originである．}である場合は
+      のいずれかであり，\SATySFi;は設定ファイル\path{\meta{foo}}が必要となった際に
+      \no-break{\path{~/.satysfi/\meta{foo}}}，
+      \no-break{\path{/usr/local/share/satysfi/\meta{foo}}}，
+      \no-break{\path{/usr/share/satysfi/\meta{foo}}}
+      \ をこの優先度で探し，最初に存在したものを用いる．
+      すなわち，\path{\meta{LIBROOT/}}はファイル\path{\meta{foo}}ごとに決定される．
+      上記パスの2箇所以上にファイルを置く場合は，この点に注意する必要がある．
+      Windowsの場合は\path{\meta{LIBROOT/}}として
 
-      \d-codem{
-        "\meta{baz}": \<Collection \{"src-dist": "\meta{baz}.ttc", "index": \meta{n}\}\>
+      \listing{
+        * \path{\%userprofile\%\\.satysfi\\}
+        * \path{\%SATYSFI_RUNTIME\%\\}
       }%
 
-      と記述することでやはり\codem{\`\meta{baz}\`}という名前でそのフォントが使えるようになる．
-      数式フォントについても\dfnje{数式フォントハッシュファイル}{math font hash file}：
-      \quote{
-        \path{dist/hash/mathfonts.satysfi-hash}
-      }%
-      に設定を記載する．
-      記述する形式はフォントハッシュファイルと同様である．
+      がこの優先度で使われる \cite[`satysfi-cross-windows`];．
+      以降，設定ファイル類は\path{\meta{LIBROOT/}}からの相対パスで書くこととする．
     }
-  >
-  +section{デフォルトのフォント設定}<
-    +p{
-      組版処理中で，特にフォント指定がない場合に使われるフォント\footnote{
-        \codem{get-initial-context}が返すテキスト処理文脈に格納されているフォント設定の意．
-      }は\dfnje{デフォルトフォントハッシュファイル}{default font hash file}：
-      \quote{
-        \path{dist/hash/default-font.satysfi-hash}
-      }%
-      で設定されているものになる．
-      デフォルトフォントハッシュファイルの内容は文字体系ごとに初期値とするフォントを指定したディクショナリであり，
-      現状では文字体系として漢字，かな，ラテン文字，その他，の4つが定められている．
-      勿論今後より多くの文字体系をサポートする想定だが，
-      今のところは手前3つにあてはまらないUnicodeコードポイントはその他扱いになる．
-      デフォルトフォントハッシュファイルは，例えば以下のようにして記述する：
+    +section{各ディレクトリの役割}<
+      +p{
+        まず，\path{\meta{LIBROOT/}}の直下には\path{dist/}がある．
+        これは内容物が将来的にパッケージマネージャやディストリビューションによって操作される
+        （すなわち，ユーザが手で内容物を変更するべきでない）ことを意識して
+        “distribution” から命名されている．
+        現在はこのディレクトリ以下の内容をユーザが操作することは非推奨ではなく，
+        また（カレントディレクトリが\path{\meta{LIBROOT/}}以下の状態で\SATySFi;を起動しない限り）
+        \SATySFi;が内容を変更することはない．
+        将来的には\path{dist/}の他に\path{local/}を設け，
+        これにユーザが自身が作成したパッケージ類を格納できるようにすることを想定している．
+      }
+      +p{
+        \path{dist/hash/}と\path{dist/unidata/}は設定ファイルの格納場所であり，
+        どのような名前のファイルが直下に置かれている必要があるかも決められている．
+        他のディレクトリは直下にデータを格納する．
+      }
+      +p{
+        \path{dist/hash/}には\SATySFi;コードからデータにアクセスするための
+        いくつかの設定ファイルが格納されており，それぞれ\dfn{YOJSON形式}
+        （\dfn{yojson}パッケージ \cite[`yojson`];により拡張されたJSON形式をこう呼ぶことにする）
+        で記述されている．
+      }
+      +p{
+        \path{dist/unidata/}はUnicodeコードポイントを
+        組版処理中にどのように扱うかを規定したファイルを格納しており，
+        これはUnicode Databaseとして公開されているテキストファイル群の一部である．
+      }
+      +p{
+        \path{dist/fonts/}は\SATySFi;で使用するOpenTypeフォントファイルを直下に格納する．
+      }
+      +p{
+        \path{dist/hyph/}はハイフネーション辞書を直下に格納する．
+        現状では英語のハイフネーションのみに対応しており，
+        \path{dist/hyph/english.satysfi-hyph}というデータのみを利用するが，
+        将来的に多言語へと拡張し，\path{dist/hash/}以下でハイフネーション辞書の設定を扱う想定である．
+      }
+      +p{
+        \path{dist/packages/}はパッケージ類を格納する．
+        パッケージファイルを
+        \quote{
+          \path{dist/packages/\meta{path/to/foo}\meta-or{|.satyh|.satyg|}}
+        }%
+        というパスに置くと，パッケージとして
+        \d-codem{
+          \@require: \meta{path/to/foo}
+        }%
+        で読み込めるようになる．
+        拡張子が\path{.satyh}のものと\path{.satyg}のものが両方存在する場合は
+        \path{.satyh}が優先される\footnote{
+          拡張子\path{.satyg}は，
+          テキストモードとPDFモードとで
+          共通に使えるパッケージファイルにつけることを想定している．
+          これは将来的な拡張の都合であり，現在はどちらでも特に違いはない．
+        }．
+      }
+    >
+    +section{フォント設定}<
+      +p{
+        \SATySFi;で使用できるフォントは
+        \dfnje{フォントハッシュファイル}{font hash file}：
+        \quote{
+          \path{dist/hash/fonts.satysfi-hash}
+        }%
+        に設定の記載のあるフォントである．
+        ユーザが新しいフォントを\SATySFi;で使えるように設定したい場合は，
+        \path{dist/fonts/}直下に所望のフォントファイル\path{\meta{bar}.otf}を置き，
+        フォントハッシュファイル内のYOJSONのディクショナリに
 
-      \d-code(```
-          {
-            "han-ideographic": {
-              "font-name": "ipaexm",
-              "ratio"    : 0.88,
-              "rising"   : 0.0
-            },
-            "kana": {
-              "font-name": "ipaexm",
-              "ratio"    : 0.88,
-              "rising"   : 0.0
-            },
-            "latin": {
-              "font-name": "Junicode",
-              "ratio"    : 1.0,
-              "rising"   : 0.0
-            },
-            "other-script": {
-              "font-name": "Junicode",
-              "ratio"    : 1.0,
-              "rising"   : 0.0
+        \d-codem{
+            "\meta{bar}": \<Single \{"src-dist": "\meta{bar}.otf"\}\>
+        }%
+
+        というエントリを追記する．
+        この設定を加えることでフォント名\codem{\`\meta{bar}\`}が\SATySFi;で使えるようになる．
+        フォントの（拡張子を除いた）ファイル名とフォント名は一致していなくても構わない．
+        所望のフォントがTrueType Collectionのフォントファイル
+        \path{\meta{baz}.ttc}の ${n} 番目の要素\footnote{番号は ${1}-originである．}である場合は
+
+        \d-codem{
+          "\meta{baz}": \<Collection \{"src-dist": "\meta{baz}.ttc", "index": \meta{n}\}\>
+        }%
+
+        と記述することでやはり\codem{\`\meta{baz}\`}という名前でそのフォントが使えるようになる．
+        数式フォントについても\dfnje{数式フォントハッシュファイル}{math font hash file}：
+        \quote{
+          \path{dist/hash/mathfonts.satysfi-hash}
+        }%
+        に設定を記載する．
+        記述する形式はフォントハッシュファイルと同様である．
+      }
+    >
+    +section{デフォルトのフォント設定}<
+      +p{
+        組版処理中で，特にフォント指定がない場合に使われるフォント\footnote{
+          \codem{get-initial-context}が返すテキスト処理文脈に格納されているフォント設定の意．
+        }は\dfnje{デフォルトフォントハッシュファイル}{default font hash file}：
+        \quote{
+          \path{dist/hash/default-font.satysfi-hash}
+        }%
+        で設定されているものになる．
+        デフォルトフォントハッシュファイルの内容は文字体系ごとに初期値とするフォントを指定したディクショナリであり，
+        現状では文字体系として漢字，かな，ラテン文字，その他，の4つが定められている．
+        勿論今後より多くの文字体系をサポートする想定だが，
+        今のところは手前3つにあてはまらないUnicodeコードポイントはその他扱いになる．
+        デフォルトフォントハッシュファイルは，例えば以下のようにして記述する：
+
+        \d-code(```
+            {
+              "han-ideographic": {
+                "font-name": "ipaexm",
+                "ratio"    : 0.88,
+                "rising"   : 0.0
+              },
+              "kana": {
+                "font-name": "ipaexm",
+                "ratio"    : 0.88,
+                "rising"   : 0.0
+              },
+              "latin": {
+                "font-name": "Junicode",
+                "ratio"    : 1.0,
+                "rising"   : 0.0
+              },
+              "other-script": {
+                "font-name": "Junicode",
+                "ratio"    : 1.0,
+                "rising"   : 0.0
+              }
             }
-          }
-      ```);%
+        ```);%
 
-      \code(`ratio`);エントリは拡大率，
-      \code(`rising`);エントリは行方向に垂直な位置調整の指定である．
-      詳しくは\ref-chapter(`typography`);で扱うが，
-      \SATySFi;ではフォントを規定するのにOpenTypeフォントファイルだけでなく
-      拡大率とベースライン調整率という2つの値を用いる．
-      上の設定では漢字と仮名を（ラテン文字との混植を想定して）
-      ${0.88} 倍の大きさに調整している例である．
-    }
-    +p{
-      なお，現状ではデフォルトの数式フォントは\codem{\`lmodern\`}で固定されてしまっている．
-      勿論，近い将来に変更可能なように拡張する想定である．
-    }
+        \code(`ratio`);エントリは拡大率，
+        \code(`rising`);エントリは行方向に垂直な位置調整の指定である．
+        詳しくは\ref-chapter(`typography`);で扱うが，
+        \SATySFi;ではフォントを規定するのにOpenTypeフォントファイルだけでなく
+        拡大率とベースライン調整率という2つの値を用いる．
+        上の設定では漢字と仮名を（ラテン文字との混植を想定して）
+        ${0.88} 倍の大きさに調整している例である．
+      }
+      +p{
+        なお，現状ではデフォルトの数式フォントは\codem{\`lmodern\`}で固定されてしまっている．
+        勿論，近い将来に変更可能なように拡張する想定である．
+      }
+    >
+    +section{分割ファイルの読み込み}<
+     +p{
+       ここでは
+       \codem{\@require: \meta{foo}}および\codem{\@import: \meta{foo}}が
+       どのようにファイルを読み込んでいるかを説明する．
+     }
+     +p{
+       \SATySFi;は，文書ファイルが与えられると
+       まずそのファイルを「すでに見たファイルのリスト」である\dfn{既読リスト}に入れ，構文解析する．
+       構文解析が（エラーを出さずに）終わると，
+       そのファイルに書かれていた
+       \codem{\@require: \meta{foo}}および\codem{\@import: \meta{foo}}
+       をそれぞれ見る．
+       \codem{\@require: \meta{foo}}の場合は
+       \path{\meta{LIBROOT/}dist/packages/\meta{foo}\meta-or{|.satyh|.satyg|}}
+       の形の候補から，
+       \codem{\@import: \meta{foo}}の場合は
+       それが書かれているファイルからの相対パスとして
+       パッケージファイルを見つけ，
+       そのパスが既読リストに入っていれば何もせず，
+       既読リストにまだ入っていないファイルならば既読リストに入れて構文解析する．
+       そこにも\codem{\@require:}や\codem{\@import:}が書かれていたら
+       その指し示す先のファイルを（既読リストに入っていなければ）また既読リストに入れて構文解析する．
+       こうして再帰的にファイルを辿っていく．
+     }
+     +p{
+       この処理を行なう際，既読リストの構築と同時に
+       ファイル\path{\meta{foo}}に\codem{\@require: \meta{bar}}が書かれていたら
+       「\path{\meta{foo}}は\path{\meta{bar}}に依存する」という依存関係も記録しておく．
+       こうして，読んだファイルを頂点とし，どのファイルがどのファイルに依存しているかを辺で張った
+       有向グラフができあがる．
+       今度はこの有向グラフを用いて，
+       列挙されたパッケージファイルを実際に読み込む順序を決定する処理に移る．
+       このとき，グラフに有向閉路が見つかった場合，\SATySFi;は
+       パッケージ間に循環した依存があって依存解決できない旨のエラーを出して終了する．
+       有向閉路がなかった場合，つまり依存関係が有向非巡回グラフ(DAG)だった場合は，
+       トポロジカルソートを行なって依存順に並べる．
+       なお，複数の依存解決の可能性がある場合，どれが選ばれるかには特に決まりがない．
+       したがって，2つのファイルのいずれを先に読み込むかによって
+       結果が異なる場合は必ず依存関係を明示する必要がある．
+     }
+     +p{
+       こうして依存関係を解決して整列されたパッケージファイルたちは，
+       後方から順に型検査を行なって評価するという処理を繰り返し，逐次読み込んでいく\footnote{
+         すべてのファイルの型検査を終えてからすべてのファイルを評価するという方式でもよいのだが，
+         現在の実装では各ファイル単位で同時並行で型検査と評価を行なう．
+         この実装上の選択には特に理由はないし，変更しても特に問題は生じない．
+       }．
+     }
+     +p{
+       なお，以上の説明からわかるように，
+       ひとつのファイル内で先頭に\codem{\@require:}や\codem{\@import:}を
+       どのような順序で書いてもそれらは互いに区別されないので，特に気にする必要はない．
+     }
+    >
   >
-  +section{分割ファイルの読み込み}<
-   +p{
-     ここでは
-     \codem{\@require: \meta{foo}}および\codem{\@import: \meta{foo}}が
-     どのようにファイルを読み込んでいるかを説明する．
-   }
-   +p{
-     \SATySFi;は，文書ファイルが与えられると
-     まずそのファイルを「すでに見たファイルのリスト」である\dfn{既読リスト}に入れ，構文解析する．
-     構文解析が（エラーを出さずに）終わると，
-     そのファイルに書かれていた
-     \codem{\@require: \meta{foo}}および\codem{\@import: \meta{foo}}
-     をそれぞれ見る．
-     \codem{\@require: \meta{foo}}の場合は
-     \path{\meta{LIBROOT/}dist/packages/\meta{foo}\meta-or{|.satyh|.satyg|}}
-     の形の候補から，
-     \codem{\@import: \meta{foo}}の場合は
-     それが書かれているファイルからの相対パスとして
-     パッケージファイルを見つけ，
-     そのパスが既読リストに入っていれば何もせず，
-     既読リストにまだ入っていないファイルならば既読リストに入れて構文解析する．
-     そこにも\codem{\@require:}や\codem{\@import:}が書かれていたら
-     その指し示す先のファイルを（既読リストに入っていなければ）また既読リストに入れて構文解析する．
-     こうして再帰的にファイルを辿っていく．
-   }
-   +p{
-     この処理を行なう際，既読リストの構築と同時に
-     ファイル\path{\meta{foo}}に\codem{\@require: \meta{bar}}が書かれていたら
-     「\path{\meta{foo}}は\path{\meta{bar}}に依存する」という依存関係も記録しておく．
-     こうして，読んだファイルを頂点とし，どのファイルがどのファイルに依存しているかを辺で張った
-     有向グラフができあがる．
-     今度はこの有向グラフを用いて，
-     列挙されたパッケージファイルを実際に読み込む順序を決定する処理に移る．
-     このとき，グラフに有向閉路が見つかった場合，\SATySFi;は
-     パッケージ間に循環した依存があって依存解決できない旨のエラーを出して終了する．
-     有向閉路がなかった場合，つまり依存関係が有向非巡回グラフ(DAG)だった場合は，
-     トポロジカルソートを行なって依存順に並べる．
-     なお，複数の依存解決の可能性がある場合，どれが選ばれるかには特に決まりがない．
-     したがって，2つのファイルのいずれを先に読み込むかによって
-     結果が異なる場合は必ず依存関係を明示する必要がある．
-   }
-   +p{
-     こうして依存関係を解決して整列されたパッケージファイルたちは，
-     後方から順に型検査を行なって評価するという処理を繰り返し，逐次読み込んでいく\footnote{
-       すべてのファイルの型検査を終えてからすべてのファイルを評価するという方式でもよいのだが，
-       現在の実装では各ファイル単位で同時並行で型検査と評価を行なう．
-       この実装上の選択には特に理由はないし，変更しても特に問題は生じない．
-     }．
-   }
-   +p{
-     なお，以上の説明からわかるように，
-     ひとつのファイル内で先頭に\codem{\@require:}や\codem{\@import:}を
-     どのような順序で書いてもそれらは互いに区別されないので，特に気にする必要はない．
-   }
-  >
->
+end

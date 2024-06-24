@@ -1,53 +1,57 @@
 % -*- coding: utf-8 -*-
-@import: settings
+use package open Stdlib
+use open BookClass of `book-class`
+use open Settings of `settings`
 
-module TopPage : sig
+module TopPage = struct
+  module TopPage :> sig
 
-  val bbf : context -> block-boxes
-  val +embed-block : [context -> block-boxes] block-cmd
+    val bbf : context -> block-boxes
+    val +embed-block : block [(context -> block-boxes)]
 
-end = struct
+  end = struct
 
-  let widP = 182mm
-  let hgtP = 257mm
-  let widI = 176mm
-  let offsetBottom = 30mm
-  let offsetAdBottom = 10mm
-  let widAd = 140mm
-  let hgtAd = 20mm
-
-
-  let-block ctx +embed-block bbf =
-    bbf ctx
-
-
-  let ib-ad ctx =
-    let pads = (2pt, 2pt, 5pt, 5pt) in
-    let deco = Deco.simple-frame 2pt Color.red Color.white in
-    inline-frame-inner pads deco
-      (embed-block-bottom ctx widAd (fun ctx -> (
-          read-block ctx '<
-            +p{物理書籍が以下から入手できます：}
-            +centering{\url?:(`https://booth.pm/ja/items/1046747`){https://booth.pm/ja/items/1046747}}
-          >
-      )))
+    val widP = 182mm
+    val hgtP = 257mm
+    val widI = 176mm
+    val offsetBottom = 30mm
+    val offsetAdBottom = 10mm
+    val widAd = 140mm
+    val hgtAd = 20mm
 
 
-  let bbf ctx =
-    let img-top-page = load-image `./img/hyoushi-clipped.jpg` in
-    let offsetX = (widP -' widI) *' 0.5 in
-    let ib =
-      inline-graphics 0mm 0mm 0mm (fun _ -> [
-        draw-text (offsetX, offsetBottom) (use-image-by-width img-top-page widI);
-%        stroke 1pt Color.red (Gr.rectangle (offsetX, 0mm) (widP -' offsetX, hgtP));
-        Gr.text-centering (widP *' 0.5, offsetAdBottom) (ib-ad ctx);
-      ])
-    in
-    line-break true true ctx (ib ++ inline-fil)
+    val block ctx +embed-block bbf =
+      bbf ctx
 
+
+    val ib-ad ctx =
+      let pads = (2pt, 2pt, 5pt, 5pt) in
+      let deco = Deco.simple-frame 2pt Color.red Color.white in
+      inline-frame-inner pads deco
+        (embed-block-bottom ctx widAd (fun ctx -> (
+            read-block ctx '<
+              +Book.p{物理書籍が以下から入手できます：}
+              +centering{\Book.url?(url = `https://booth.pm/ja/items/1046747`)({https://booth.pm/ja/items/1046747});}
+            >
+        )))
+
+
+    val bbf ctx =
+      let img-top-page = load-image `./img/hyoushi-clipped.jpg` in
+      let offsetX = (widP -' widI) *' 0.5 in
+      let ib =
+        inline-graphics 0mm 0mm 0mm (fun _ -> unite-graphics [
+          draw-text (offsetX, offsetBottom) (use-image-by-width img-top-page widI),
+  %        stroke 1pt Color.red (Gr.rectangle (offsetX, 0mm) (widP -' offsetX, hgtP));
+          Gr.text-centering (widP *' 0.5, offsetAdBottom) (ib-ad ctx),
+        ])
+      in
+      line-break true true ctx (ib ++ inline-fil)
+
+  end
+
+
+  val top-page = '<
+    +TopPage.embed-block(TopPage.bbf);
+  >
 end
-
-
-let top-page = '<
-  +TopPage.embed-block(TopPage.bbf);
->

@@ -1,475 +1,486 @@
 % -*- coding: utf-8 -*-
-@import: settings
+use package open Stdlib
+use package open Math
+use package open Proof
+use open BookClass of `book-class`
+use open Settings of `settings`
+use open Term of `term`
+use open BNF of `bnf`
 
-let specification = '<
-  +p{
-    この章は，対象をより細かい粒度で理解しようとせずにはいられない，物好きな読者向けに用意した．
-    全貌を形式的に記述するには\SATySFi;は大きすぎるので，
-    根幹となる部分だけを抜き出したサブセットを定義し，
-    それについて操作的意味論や型システムをフォーマルに記述することを試みた．
-  }
-  +section{テキストの扱いの形式的記述}<
-    +subsection{構文}<
-      +p{
-        この節では，\SATySFi;に於ける
-        テキストやボックス列の扱いを形式的に記述した，
-        ごく小さなサブセットの言語を与える．
-        項 ${\term!(Term.tme)}，値 ${\term!(Term.tmv)}，
-        インラインテキスト要素 ${\term!(Term.tmit)}，
-        ブロックテキスト要素 ${\term!(Term.tmbt)}
-        は以下のBNFでそれぞれ定義される：
+module Specification = struct
+  val specification =
+    let open Book in
+    let open Pervasives in
+  '<
+    +p{
+      この章は，対象をより細かい粒度で理解しようとせずにはいられない，物好きな読者向けに用意した．
+      全貌を形式的に記述するには\SATySFi;は大きすぎるので，
+      根幹となる部分だけを抜き出したサブセットを定義し，
+      それについて操作的意味論や型システムをフォーマルに記述することを試みた．
+    }
+    +section{テキストの扱いの形式的記述}<
+      +subsection{構文}<
+        +p{
+          この節では，\SATySFi;に於ける
+          テキストやボックス列の扱いを形式的に記述した，
+          ごく小さなサブセットの言語を与える．
+          項 ${\term!(Term.tme)}，値 ${\term!(Term.tmv)}，
+          インラインテキスト要素 ${\term!(Term.tmit)}，
+          ブロックテキスト要素 ${\term!(Term.tmbt)}
+          は以下のBNFでそれぞれ定義される：
 
-        \BNFs(Term.([
-          (show tme, [
-            List.map show [
-              tmv; !vx; app tme tme; let-in vx tme (Some(tme));
-              readI tme tme; readB tme tme;
-            ];
-          ]);
-          (show tmv, [
-            List.map show [
-              tmc; lam vx tme; lamI vx tme; lamB vx tme;
-              tmctx; textI (star tmit); textB (star tmbt);
-              boxI (star tmib); boxB (star tmbb);
-            ];
-          ]);
-          (show tmit, [
-            List.map show [
-              tmchar;
-              app tme (star tme);
-            ];
-          ]);
-          (show tmbt, [
-            List.map show [
-              app tme (star tme);
-            ]
-          ]);
-        ]));%
+          \BNFs(Term.([
+            (show tme, [
+              List.map show [
+                tmv, !vx, app tme tme, let-in vx tme (Some(tme)),
+                readI tme tme, readB tme tme,
+              ],
+            ]),
+            (show tmv, [
+              List.map show [
+                tmc, lam vx tme, lamI vx tme, lamB vx tme,
+                tmctx, textI (star tmit), textB (star tmbt),
+                boxI (star tmib), boxB (star tmbb),
+              ],
+            ]),
+            (show tmit, [
+              List.map show [
+                tmchar,
+                app tme (star tme),
+              ],
+            ]),
+            (show tmbt, [
+              List.map show [
+                app tme (star tme),
+              ]
+            ]),
+          ]));%
 
-        ここで
-        メタな記法 ${\term!(Term.(star !${M}))} は
-        ${0} 回以上の有限個の ${M} の連接を表し，
-        ${\term!(Term.(!vx))} は変数を，
-        ${\term!(Term.tmc)} は定数やプリミティヴを，
-        ${\term!(Term.tmctx)} はテキスト処理文脈を，
-        ${\term!(Term.tmchar)} はUnicodeコードポイントなどテキストの要素としての文字を
-        それぞれ動くとする．
-        ${\term!(Term.tmib)}は形式的には定義を与えないが，インラインボックス列の要素，すなわち
-        どんなサイズのどんなフォントで組まれるかといった情報を含む
-        “既に組めるようになっているテキスト” の要素にあたる．イメージとしては
-        \as-latin-word{\BoxGraphics.roman{|i|n|l|i|n|e|}}の
-        \as-latin-word{\BoxGraphics.roman{|i|}}とか
-        \as-latin-word{\BoxGraphics.roman{|n|}}などひとつひとつが
-        ${\term!(Term.tmib)} に該当する\footnote{
-          実際にはカーニングや合字の処理，さらにはハイフネーション辞書に基づく
-          ソフトハイフンの挿入などの処理があるため，“1文字1文字を別個に
-          インラインテキストからインラインボックス列に変換している” わけではないが，
-          ひとまずの近似的な理解としてはこれで十分である．
-        }．
-        ${\term!(Term.tmbb)} も同様に，形式的定義は与えないが
-        “すでに組版処理をするための情報がすべて入っている，段落中の1行を表すデータ”
-        におおよそ相当する．
-      }
-      +p{
-        インラインテキスト要素およびブロックテキスト要素の
-        ${\term!(Term.(appseq (tmesub ${0})
-            [tmesub ${1}; !${\cdots}; tmesub ${n}]))}
-        はコマンドの適用である．
-        実際の\SATySFi;ではコマンドにあたる ${\term!(Term.(tmesub ${0}))} の部分は
-        簡単のためコマンド名しか構文的に受けつけないようになっているが，
-        ここでは定式化の都合上一般の項が書けるものとする．
+          ここで
+          メタな記法 ${\term!(Term.(star !${M}))} は
+          ${0} 回以上の有限個の ${M} の連接を表し，
+          ${\term!(Term.(!vx))} は変数を，
+          ${\term!(Term.tmc)} は定数やプリミティヴを，
+          ${\term!(Term.tmctx)} はテキスト処理文脈を，
+          ${\term!(Term.tmchar)} はUnicodeコードポイントなどテキストの要素としての文字を
+          それぞれ動くとする．
+          ${\term!(Term.tmib)}は形式的には定義を与えないが，インラインボックス列の要素，すなわち
+          どんなサイズのどんなフォントで組まれるかといった情報を含む
+          “既に組めるようになっているテキスト” の要素にあたる．イメージとしては
+          \as-latin-word{\BoxGraphics.roman{|i|n|l|i|n|e|}}の
+          \as-latin-word{\BoxGraphics.roman{|i|}}とか
+          \as-latin-word{\BoxGraphics.roman{|n|}}などひとつひとつが
+          ${\term!(Term.tmib)} に該当する\footnote{
+            実際にはカーニングや合字の処理，さらにはハイフネーション辞書に基づく
+            ソフトハイフンの挿入などの処理があるため，“1文字1文字を別個に
+            インラインテキストからインラインボックス列に変換している” わけではないが，
+            ひとまずの近似的な理解としてはこれで十分である．
+          }．
+          ${\term!(Term.tmbb)} も同様に，形式的定義は与えないが
+          “すでに組版処理をするための情報がすべて入っている，段落中の1行を表すデータ”
+          におおよそ相当する．
+        }
+        +p{
+          インラインテキスト要素およびブロックテキスト要素の
+          ${\term!(Term.(appseq (tmesub ${0})
+              [tmesub ${1}, !${\cdots}, tmesub ${n}]))}
+          はコマンドの適用である．
+          実際の\SATySFi;ではコマンドにあたる ${\term!(Term.(tmesub ${0}))} の部分は
+          簡単のためコマンド名しか構文的に受けつけないようになっているが，
+          ここでは定式化の都合上一般の項が書けるものとする．
 
-        ${\term!(Term.(paren (readI (tmesub ${1}) (tmesub ${2}))))} は
-        \codem{read-inline \metasub(${1}){e} \metasub(${2}){e}}に相当し，
-        同様に
-        ${\term!(Term.(paren (readB (tmesub ${1}) (tmesub ${2}))))} も
-        \codem{read-block \metasub(${1}){e} \metasub(${2}){e}}に相当する．
-        簡単のため部分適用できないようになっているが，
+          ${\term!(Term.(paren (readI (tmesub ${1}) (tmesub ${2}))))} は
+          \codem{read-inline \metasub(${1}){e} \metasub(${2}){e}}に相当し，
+          同様に
+          ${\term!(Term.(paren (readB (tmesub ${1}) (tmesub ${2}))))} も
+          \codem{read-block \metasub(${1}){e} \metasub(${2}){e}}に相当する．
+          簡単のため部分適用できないようになっているが，
 
-        \display-term(Term.(
-          let-in ${r} ?:[vx; vy]
-            (readI !vx !vy) None)
-        );%
+          \display-term(Term.(
+            let-in ${r} ?(args = [vx, vy])
+              (readI !vx !vy) None)
+          );%
 
-        などと定義して ${r} を使えば部分適用できるので気にしなくてよい\footnote{
-          実際のプリミティヴの\codem{read-inline}も，正確にはこの ${r} に対応する．
-        }．
+          などと定義して ${r} を使えば部分適用できるので気にしなくてよい\footnote{
+            実際のプリミティヴの\codem{read-inline}も，正確にはこの ${r} に対応する．
+          }．
 
-        ${\term!(Term.(paren (lamI vx tme)))} は “インラインコマンド抽象” で，
-        ${x} はテキスト処理文脈を受け取るための変数である．
-        計算上の振舞いは通常のラムダ抽象 ${\term!(Term.(paren (lam vx tme)))} と
-        全く同様の直観で理解できるものだが，型つけの都合上区別されている．
-        ${\term!(Term.(paren (lamI vx tme)))} 自体を直接書く方法は
-        \SATySFi;の処理系からは提供されておらず，
-        “インラインコマンド抽象” は
-        必ず\codem{let-inline}によってコマンド名に束縛する必要がある\footnote{
-          不必要な複雑化を避ける意図がある．
-          一応コマンド\codem{\meta{cmd}}に束縛されている
-          “インラインコマンド抽象” を
-          \codem{(command \meta{cmd})}で取り出すことはできるものの，
-          \codem{get-initial-context}や\codem{set-math-command}などの
-          プリミティヴに引数として渡す以外の本質的な用途はない．
-        }．
-        \codem{let-inline}によるコマンド定義の構文：
+          ${\term!(Term.(paren (lamI vx tme)))} は “インラインコマンド抽象” で，
+          ${x} はテキスト処理文脈を受け取るための変数である．
+          計算上の振舞いは通常のラムダ抽象 ${\term!(Term.(paren (lam vx tme)))} と
+          全く同様の直観で理解できるものだが，型つけの都合上区別されている．
+          ${\term!(Term.(paren (lamI vx tme)))} 自体を直接書く方法は
+          \SATySFi;の処理系からは提供されておらず，
+          “インラインコマンド抽象” は
+          必ず\codem{let-inline}によってコマンド名に束縛する必要がある\footnote{
+            不必要な複雑化を避ける意図がある．
+            一応コマンド\codem{\meta{cmd}}に束縛されている
+            “インラインコマンド抽象” を
+            \codem{(command \meta{cmd})}で取り出すことはできるものの，
+            \codem{get-initial-context}や\codem{set-math-command}などの
+            プリミティヴに引数として渡す以外の本質的な用途はない．
+          }．
+          \codem{let-inline}によるコマンド定義の構文：
 
-        \d-codem{
-          let-inline \meta{x} \meta{cmd}
-            \metasub(${1}){y} ${\cdots} \metasub(${n}){y} = \metasub(${1}){e}
-          in \metasub(${2}){e}
-        }%
+          \d-codem{
+            let-inline \meta{x} \meta{cmd}
+              \metasub(${1}){y} ${\cdots} \metasub(${n}){y} = \metasub(${1}){e}
+            in \metasub(${2}){e}
+          }%
 
-        は以下の糖衣構文である：
+          は以下の糖衣構文である：
 
-        \display-term(Term.(
-          let-in ${cmd}
-            (lamI vx (lam ${y_1} !${\ldots\ \term!(lam ${y_n} (tmesub ${1}))}))
-          (Some(tmesub ${2}))
-        ));%
+          \display-term(Term.(
+            let-in ${cmd}
+              (lamI vx (lam ${y_1} !${\ldots\ \term!(lam ${y_n} (tmesub ${1}))}))
+            (Some(tmesub ${2}))
+          ));%
 
-        “ブロックコマンド抽象” についても同様に，
+          “ブロックコマンド抽象” についても同様に，
 
-        \d-codem{
-          let-block \meta{x} \meta{cmd}
-            \metasub(${1}){y} ${\cdots} \metasub(${n}){y} = \metasub(${1}){e}
-          in \metasub(${2}){e}
-        }%
+          \d-codem{
+            let-block \meta{x} \meta{cmd}
+              \metasub(${1}){y} ${\cdots} \metasub(${n}){y} = \metasub(${1}){e}
+            in \metasub(${2}){e}
+          }%
 
-        は以下の糖衣構文である：
+          は以下の糖衣構文である：
 
-        \display-term(Term.(
-          let-in ${cmd}
-            (lamB vx (lam ${y_1} !${\ldots\ \term!(lam ${y_n} (tmesub ${1}))}))
-          (Some(tmesub ${2}))
-        ));%
-      }
-      +p{
-        最初に掲げたBNFを見てもしかすると意外に感じたかもしれないが，
-        インラインテキスト ${\term!(Term.(textI tmIt))} と
-        ブロックテキスト ${\term!(Term.(textB tmBt))} は
-        それ自体（単に項なのではなく）値である．
-        すなわち，プログラムの評価中に ${\term!(Term.(textI tmIt))} という形が出てきたら，
-        （たとえ中にインラインコマンドが残っている状態でも）
-        それ以上評価されずに函数やコマンドに渡されたりする．
-        これは\SATySFi;言語を理解する上で非常に重要な点である．
-        詳しくは次節の操作的意味論の際に説明する．
-      }
-    >
-    +subsection{操作的意味論}<
-      +p{
-        操作的意味論はいわゆるbig step semanticsで定式化する．
-        まず，項 ${\term!(Term.tme)} が値 ${\term!(Term.tmv)} へと評価されるという
-        2項関係 ${\bs!(Term.tme)!(Term.tmv)} は次のように定義される：
+          \display-term(Term.(
+            let-in ${cmd}
+              (lamB vx (lam ${y_1} !${\ldots\ \term!(lam ${y_n} (tmesub ${1}))}))
+            (Some(tmesub ${2}))
+          ));%
+        }
+        +p{
+          最初に掲げたBNFを見てもしかすると意外に感じたかもしれないが，
+          インラインテキスト ${\term!(Term.(textI tmIt))} と
+          ブロックテキスト ${\term!(Term.(textB tmBt))} は
+          それ自体（単に項なのではなく）値である．
+          すなわち，プログラムの評価中に ${\term!(Term.(textI tmIt))} という形が出てきたら，
+          （たとえ中にインラインコマンドが残っている状態でも）
+          それ以上評価されずに函数やコマンドに渡されたりする．
+          これは\SATySFi;言語を理解する上で非常に重要な点である．
+          詳しくは次節の操作的意味論の際に説明する．
+        }
+      >
+      +subsection{操作的意味論}<
+        +p{
+          操作的意味論はいわゆるbig step semanticsで定式化する．
+          まず，項 ${\term!(Term.tme)} が値 ${\term!(Term.tmv)} へと評価されるという
+          2項関係 ${\bs!(Term.tme)!(Term.tmv)} は次のように定義される：
 
-        \math-list(Term.(${
-          | \derive?:{\text!{(E-Val)}}{||}{\bs!(tmv)!(tmv)}
+          \math-list(Term.(${
+            | \derive?!(name = ${\text!{(E-Val)}}){||}{\bs!(tmv)!(tmv)}
 
-          | \derive?:{\text!{(E-App)}}{
-              | \bs!(tmesub ${1})!(lam vx tme)
-              | \bs!(tmesub ${2})!(tmvsub ${2})
-              | \bs!(subst (tmvsub ${2}) vx tme)!(tmv)
-              |}{\bs!(app (tmesub ${1}) (tmesub ${2}))!(tmv)}
+            | \derive?!(name = ${\text!{(E-App)}}){
+                | \bs!(tmesub ${1})!(lam vx tme)
+                | \bs!(tmesub ${2})!(tmvsub ${2})
+                | \bs!(subst (tmvsub ${2}) vx tme)!(tmv)
+                |}{\bs!(app (tmesub ${1}) (tmesub ${2}))!(tmv)}
 
-          | \derive?:{\text!{(E-LetIn)}}{
-              | \bs!(tmesub ${1})!(tmvsub ${1})
-              | \bs!(subst (tmvsub ${1}) vx (tmesub ${2}))!(tmvsub ${2})
-              |}{\bs!(let-in vx (tmesub ${1}) (Some(tmesub ${2})))!(tmvsub ${2})}
+            | \derive?!(name = ${\text!{(E-LetIn)}}){
+                | \bs!(tmesub ${1})!(tmvsub ${1})
+                | \bs!(subst (tmvsub ${1}) vx (tmesub ${2}))!(tmvsub ${2})
+                |}{\bs!(let-in vx (tmesub ${1}) (Some(tmesub ${2})))!(tmvsub ${2})}
 
-          | \derive?:{\text!{(E-ReadI)}}{
-              | \bs!(tmesub ${1})!(tmctx)
-              | \bs!(tmesub ${2})!(textI tmIt)
-              | \bsI!(tmctx)!(tmIt)!(tmIb)
-              |}{\bs!(readI (tmesub ${1}) (tmesub ${2}))!(boxI tmIb)}
+            | \derive?!(name = ${\text!{(E-ReadI)}}){
+                | \bs!(tmesub ${1})!(tmctx)
+                | \bs!(tmesub ${2})!(textI tmIt)
+                | \bsI!(tmctx)!(tmIt)!(tmIb)
+                |}{\bs!(readI (tmesub ${1}) (tmesub ${2}))!(boxI tmIb)}
 
-          | \derive?:{\text!{(E-ReadB)}}{
-              | \bs!(tmesub ${1})!(tmctx)
-              | \bs!(tmesub ${2})!(textB tmBt)
-              | \bsB!(tmctx)!(tmBt)!(tmBb)
-              |}{\bs!(readB (tmesub ${1}) (tmesub ${2}))!(boxB tmBb)}
-          |}));%
+            | \derive?!(name = ${\text!{(E-ReadB)}}){
+                | \bs!(tmesub ${1})!(tmctx)
+                | \bs!(tmesub ${2})!(textB tmBt)
+                | \bsB!(tmctx)!(tmBt)!(tmBb)
+                |}{\bs!(readB (tmesub ${1}) (tmesub ${2}))!(boxB tmBb)}
+            |}));%
 
-        インラインテキストの評価は以下のように定められる．すなわち，
-        テキスト処理文脈 ${\term!(Term.tmctx)} の下で
-        インラインテキスト ${\term!(Term.tmIt)} が
-        インラインボックス列 ${\term!(Term.tmIb)} へ評価されるという
-        3項関係 ${\bsI!(Term.tmctx)!(Term.tmIt)!(Term.tmIb)} は
-        以下のように定義される：
+          インラインテキストの評価は以下のように定められる．すなわち，
+          テキスト処理文脈 ${\term!(Term.tmctx)} の下で
+          インラインテキスト ${\term!(Term.tmIt)} が
+          インラインボックス列 ${\term!(Term.tmIb)} へ評価されるという
+          3項関係 ${\bsI!(Term.tmctx)!(Term.tmIt)!(Term.tmIb)} は
+          以下のように定義される：
 
-        \math-list(Term.(${
-          | \derive?:{\text!{(EI-Empty)}}{||}{
-              \bsI!(tmctx)!(!${\epsilon})!(!${\epsilon})}
+          \math-list(Term.(${
+            | \derive?!(name = ${\text!{(EI-Empty)}}){||}{
+                \bsI!(tmctx)!(!${\epsilon})!(!${\epsilon})}
 
-          | \derive?:{\text!{(EI-Char)}}{
-              | \term!(tmib) \defeq
-                   \app{\mathrm{Typeface}}{\term!(tmctx), \term!(tmchar)}
-              | \bsI!(tmctx)!(tmIt)!(tmIb)
-              |}{
-                \bsI!(tmctx)!(cat tmchar tmIt)!(cat tmib tmIb)
+            | \derive?!(name = ${\text!{(EI-Char)}}){
+                | \term!(tmib) \defeq
+                     \app{\mathrm{Typeface}}{\term!(tmctx), \term!(tmchar)}
+                | \bsI!(tmctx)!(tmIt)!(tmIb)
+                |}{
+                  \bsI!(tmctx)!(cat tmchar tmIt)!(cat tmib tmIb)
+                }
+
+            | \derive?!(name = ${\text!{(EI-Command)}}){
+                | \bs!(tmesub ${0})!(lamI vx tme)
+                | \bs!(appseq (paren (subst tmctx vx tme))
+                    [tmesub ${1}, !${\cdots}, tmesub ${n}])!(boxI tmIbp)
+                | \bsI!(tmctx)!(tmIt)!(tmIb)
+                |}{
+                  \bsI!(tmctx)!(cat (paren (appseq (tmesub ${0})
+                    [tmesub ${1}, !${\cdots}, tmesub ${n}])) tmIt)!(cat tmIbp tmIb)
+                }
+            |}));%
+
+          ここで
+          ${\app{\mathrm{Typeface}}{\term!(Term.tmctx), \term!(Term.tmchar)}}
+          はテキスト処理文脈 ${\term!(Term.tmctx)}（の文字サイズやフォントといった情報）
+          に基づいて文字 ${\term!(Term.tmchar)} を “組める状態にしたもの” を表す．
+
+          ブロックテキストについても，テキスト処理文脈 ${\term!(Term.tmctx)} の下で
+          ブロックテキスト ${\term!(Term.tmBt)} が
+          ブロックボックス列 ${\term!(Term.tmBb)} へ評価されるという3項関係
+          ${\bsB!(Term.tmctx)!(Term.tmBt)!(Term.tmBb)} が
+          同様に以下のように定義される：
+
+          \math-list(Term.(${
+            | \derive?!(name = ${\text!{(EB-Empty)}}){||}{
+                \bsB!(tmctx)!(!${\epsilon})!(!${\epsilon})}
+
+            | \derive?!(name = ${\text!{(EB-Command)}}){
+                | \bs!(tmesub ${0})!(lamB vx tme)
+                | \bs!(appseq (paren (subst tmctx vx tme))
+                    [tmesub ${1}, !${\cdots}, tmesub ${n}])!(boxB tmBbp)
+                | \bsB!(tmctx)!(tmBt)!(tmBb)
+                |}{
+                  \bsB!(tmctx)!(cat (paren (appseq (tmesub ${0})
+                    [tmesub ${1}, !${\cdots}, tmesub ${n}])) tmBt)!(cat tmBbp tmBb)
+                }
+            |}));
+        }
+        +p{
+          注目すべき評価規則は (E-ReadI) だ．
+          この規則では，まず第1引数のテキスト処理文脈が評価され，続いて
+          第2引数として渡された項 ${\term!(Term.tmesub ${2})} が評価され
+          インラインテキスト ${\term!(Term.(textI tmIt))} となる．
+          前節で述べたように，一般にこのインラインテキストの中にはコマンドの適用が含まれている．
+          これらのコマンド適用の評価を “起動する” のがまさに
+          ${\term!(Term.(paren (readI !${\text!{-}} !${\text!{-}})))}
+          の仕事なのである．
+          (E-ReadB) についても，同様のことが言える．
+        }
+        +p{
+          実際には
+          テキスト処理文脈 ${\term!(Term.tmctx)}
+          の保持する情報を更新するプリミティヴや，
+          テキスト処理文脈と
+          ${\term!(Term.(boxI tmIb))} の形の項（つまりインラインボックス列）を受け取って
+          適切に行分割し ${\term!(Term.(boxB tmBb))} の形の項（つまりブロックボックス列）
+          を返すようなプリミティヴが備わっていて，
+          これによって “意味のある” 処理が記述できるわけだが，
+          核としては上記のような体系が\SATySFi;の基礎をなしている．
+        }
+      >
+      +subsection{型システム}<
+        +p{
+          前節で定義した計算体系上に型システムを与える．
+          実際の\SATySFi;の型システムはそれなりに巨大で，
+          SML\#と同様のレコード \cite[`Ohori1995`];
+          やラベルなしのオプション引数を扱えるようになっているが，
+          一旦それらを除いて，テキストとボックス列に関わる根幹となる部分だけを
+          抜き出して扱うことにする．
+          基本型\type(Type.tymb);，
+          単相型\type(Type.tymtau);，
+          多相型\type(Type.tymsigma);
+          は以下のBNFでそれぞれ定義される：
+
+          \BNFs(Type.([
+            (show tymb, [
+              List.map show [
+                context, inline-text, block-text,
+                inline-boxes, block-boxes, of-math ${\cdots}
+              ]
+            ]),
+            (show tymtau, [
+              List.map show [
+                tymalpha, tymb, tymtau --> tymtau,
+                cmdI [star tymtau], cmdB [star tymtau]
+              ]
+            ]),
+            (show tymsigma, [
+              List.map show [
+                tymtau, forall ${\alpha} tymsigma,
+              ]
+            ]),
+          ]));%
+
+          ただし，\type(Type.tymalpha);は型変数を動くとする．
+          型環境 ${\Gamma} の下で ${\term!(Term.tme)} に型\type(Type.tymtau);がつく
+          という型判定の3項関係 ${\tj{\Gamma}!(Term.tme)!(Type.tymtau)} は
+          以下の規則で与えられる：
+
+          \math-list(Term.(Type.(${
+            | \derive?!(name = ${\text!{(T-Const)}}){
+                | \app{\Delta}{\term!(tmc)} \synteq \mtype!(tymtau)
+                |}{\tj{\Gamma}!(tmc)!(tymtau)}
+
+            | \derive?!(name = ${\text!{(T-Var)}}){
+                | \app{\Gamma}{#vx} \geqslant \mtype!(tymtau)
+                |}{\tj{\Gamma}!(!vx)!(tymtau)}
+
+            | \derive?!(name = ${\text!{(T-Lam)}}){
+                | \tj{
+                    \overwrite{\Gamma}{#vx}{\mtype!(tymtaup)}
+                  }!(tme)!(tymtau)
+                |}{
+                  \tj{\Gamma}!(lam vx tme)!(tymtaup --> tymtau)
+                }
+
+            | \derive?!(name = ${\text!{(T-LetIn)}}){
+                | \tj{\Gamma}!(tmesub ${1})!(tymtausub ${1})
+                | \tj{
+                    \overwrite{\Gamma}{#vx}{
+                      \app{\mathrm{Gen}}{\Gamma, \mtype!(tymtausub ${1})}
+                    }
+                  }!(tmesub ${2})!(tymtausub ${2})
+                |}{
+                  \tj{\Gamma}!(let-in vx
+                    (tmesub ${1}) (Some(tmesub ${2})))!(tymtausub ${2})
+                }
+
+            | \derive?!(name = ${\text!{(T-App)}}){
+                | \tj{\Gamma}!(tmesub ${1})!(tymtaup --> tymtau)
+                | \tj{\Gamma}!(tmesub ${2})!(tymtaup)
+                |}{\tj{\Gamma}!(app (tmesub ${1}) (tmesub ${2}))!(tymtau)}
+
+            | \derive?!(name = ${\text!{(T-Context)}}){||}{
+                \tj{\Gamma}!(tmctx)!(context)}
+
+            | \derive?!(name = ${\text!{(T-ReadI)}}){
+                | \tj{\Gamma}!(tmesub ${1})!(context)
+                | \tj{\Gamma}!(tmesub ${2})!(inline-text)
+                |}{\tj{\Gamma}!(readI (tmesub ${1}) (tmesub ${2}))!(inline-boxes)}
+
+            | \derive?!(name = ${\text!{(T-ReadB)}}){
+                | \tj{\Gamma}!(tmesub ${1})!(context)
+                | \tj{\Gamma}!(tmesub ${2})!(block-text)
+                |}{\tj{\Gamma}!(readB (tmesub ${1}) (tmesub ${2}))!(block-boxes)}
+
+            | \derive?!(name = ${\text!{(T-BoxI)}}){||}{
+                \tj{\Gamma}!(boxI tmIb)!(inline-boxes)
               }
 
-          | \derive?:{\text!{(EI-Command)}}{
-              | \bs!(tmesub ${0})!(lamI vx tme)
-              | \bs!(appseq (paren (subst tmctx vx tme))
-                  [tmesub ${1}; !${\cdots}; tmesub ${n}])!(boxI tmIbp)
-              | \bsI!(tmctx)!(tmIt)!(tmIb)
-              |}{
-                \bsI!(tmctx)!(cat (paren (appseq (tmesub ${0})
-                  [tmesub ${1}; !${\cdots}; tmesub ${n}])) tmIt)!(cat tmIbp tmIb)
-              }
-          |}));%
-
-        ここで
-        ${\app{\mathrm{Typeface}}{\term!(Term.tmctx), \term!(Term.tmchar)}}
-        はテキスト処理文脈 ${\term!(Term.tmctx)}（の文字サイズやフォントといった情報）
-        に基づいて文字 ${\term!(Term.tmchar)} を “組める状態にしたもの” を表す．
-
-        ブロックテキストについても，テキスト処理文脈 ${\term!(Term.tmctx)} の下で
-        ブロックテキスト ${\term!(Term.tmBt)} が
-        ブロックボックス列 ${\term!(Term.tmBb)} へ評価されるという3項関係
-        ${\bsB!(Term.tmctx)!(Term.tmBt)!(Term.tmBb)} が
-        同様に以下のように定義される：
-
-        \math-list(Term.(${
-          | \derive?:{\text!{(EB-Empty)}}{||}{
-              \bsB!(tmctx)!(!${\epsilon})!(!${\epsilon})}
-
-          | \derive?:{\text!{(EB-Command)}}{
-              | \bs!(tmesub ${0})!(lamB vx tme)
-              | \bs!(appseq (paren (subst tmctx vx tme))
-                  [tmesub ${1}; !${\cdots}; tmesub ${n}])!(boxB tmBbp)
-              | \bsB!(tmctx)!(tmBt)!(tmBb)
-              |}{
-                \bsB!(tmctx)!(cat (paren (appseq (tmesub ${0})
-                  [tmesub ${1}; !${\cdots}; tmesub ${n}])) tmBt)!(cat tmBbp tmBb)
-              }
-          |}));
-      }
-      +p{
-        注目すべき評価規則は (E-ReadI) だ．
-        この規則では，まず第1引数のテキスト処理文脈が評価され，続いて
-        第2引数として渡された項 ${\term!(Term.tmesub ${2})} が評価され
-        インラインテキスト ${\term!(Term.(textI tmIt))} となる．
-        前節で述べたように，一般にこのインラインテキストの中にはコマンドの適用が含まれている．
-        これらのコマンド適用の評価を “起動する” のがまさに
-        ${\term!(Term.(paren (readI !${\text!{-}} !${\text!{-}})))}
-        の仕事なのである．
-        (E-ReadB) についても，同様のことが言える．
-      }
-      +p{
-        実際には
-        テキスト処理文脈 ${\term!(Term.tmctx)}
-        の保持する情報を更新するプリミティヴや，
-        テキスト処理文脈と
-        ${\term!(Term.(boxI tmIb))} の形の項（つまりインラインボックス列）を受け取って
-        適切に行分割し ${\term!(Term.(boxB tmBb))} の形の項（つまりブロックボックス列）
-        を返すようなプリミティヴが備わっていて，
-        これによって “意味のある” 処理が記述できるわけだが，
-        核としては上記のような体系が\SATySFi;の基礎をなしている．
-      }
-    >
-    +subsection{型システム}<
-      +p{
-        前節で定義した計算体系上に型システムを与える．
-        実際の\SATySFi;の型システムはそれなりに巨大で，
-        SML\#と同様のレコード \cite[`Ohori1995`];
-        やラベルなしのオプション引数を扱えるようになっているが，
-        一旦それらを除いて，テキストとボックス列に関わる根幹となる部分だけを
-        抜き出して扱うことにする．
-        基本型\type(Type.tymb);，
-        単相型\type(Type.tymtau);，
-        多相型\type(Type.tymsigma);
-        は以下のBNFでそれぞれ定義される：
-
-        \BNFs(Type.([
-          (show tymb, [
-            List.map show [
-              context; inline-text; block-text;
-              inline-boxes; block-boxes; of-math ${\cdots}
-            ]
-          ]);
-          (show tymtau, [
-            List.map show [
-              tymalpha; tymb; tymtau --> tymtau;
-              cmdI [star tymtau]; cmdB [star tymtau]
-            ]
-          ]);
-          (show tymsigma, [
-            List.map show [
-              tymtau; forall ${\alpha} tymsigma;
-            ]
-          ]);
-        ]));%
-
-        ただし，\type(Type.tymalpha);は型変数を動くとする．
-        型環境 ${\Gamma} の下で ${\term!(Term.tme)} に型\type(Type.tymtau);がつく
-        という型判定の3項関係 ${\tj{\Gamma}!(Term.tme)!(Type.tymtau)} は
-        以下の規則で与えられる：
-
-        \math-list(Term.(Type.(${
-          | \derive?:{\text!{(T-Const)}}{
-              | \app{\Delta}{\term!(tmc)} \synteq \mtype!(tymtau)
-              |}{\tj{\Gamma}!(tmc)!(tymtau)}
-
-          | \derive?:{\text!{(T-Var)}}{
-              | \app{\Gamma}{#vx} \geqslant \mtype!(tymtau)
-              |}{\tj{\Gamma}!(!vx)!(tymtau)}
-
-          | \derive?:{\text!{(T-Lam)}}{
-              | \tj{
-                  \overwrite{\Gamma}{#vx}{\mtype!(tymtaup)}
-                }!(tme)!(tymtau)
-              |}{
-                \tj{\Gamma}!(lam vx tme)!(tymtaup --> tymtau)
+            | \derive?!(name = ${\text!{(T-BoxB)}}){||}{
+                \tj{\Gamma}!(boxB tmBb)!(block-boxes)
               }
 
-          | \derive?:{\text!{(T-LetIn)}}{
-              | \tj{\Gamma}!(tmesub ${1})!(tymtausub ${1})
-              | \tj{
-                  \overwrite{\Gamma}{#vx}{
-                    \app{\mathrm{Gen}}{\Gamma, \mtype!(tymtausub ${1})}
-                  }
-                }!(tmesub ${2})!(tymtausub ${2})
-              |}{
-                \tj{\Gamma}!(let-in vx
-                  (tmesub ${1}) (Some(tmesub ${2})))!(tymtausub ${2})
-              }
+            | \derive?!(name = ${\text!{(T-TextI)}}){
+                | \tjI{\Gamma}!(tmIt)
+                |}{
+                  \tj{\Gamma}!(textI tmIt)!(inline-text)
+                }
 
-          | \derive?:{\text!{(T-App)}}{
-              | \tj{\Gamma}!(tmesub ${1})!(tymtaup --> tymtau)
-              | \tj{\Gamma}!(tmesub ${2})!(tymtaup)
-              |}{\tj{\Gamma}!(app (tmesub ${1}) (tmesub ${2}))!(tymtau)}
+            | \derive?!(name = ${\text!{(T-TextB)}}){
+                | \tjB{\Gamma}!(tmBt)
+                |}{
+                  \tj{\Gamma}!(textB tmBt)!(block-text)
+                }
 
-          | \derive?:{\text!{(T-Context)}}{||}{
-              \tj{\Gamma}!(tmctx)!(context)}
+            | \derive?!(name = ${\text!{(T-LamI)}}){
+                | \tj{
+                    \overwrite{\Gamma}{#vx}{\mtype!(context)}
+                  }!(tme)!(
+                    tymtausub ${1} --> (of-math ${\cdots} -->
+                      (tymtausub ${n} --> inline-boxes)))
+                |}{
+                  \tj{\Gamma}!(lamI vx tme)!(cmdI
+                    [tymtausub ${1}, of-math ${\cdots}, tymtausub ${n}])
+                }
 
-          | \derive?:{\text!{(T-ReadI)}}{
-              | \tj{\Gamma}!(tmesub ${1})!(context)
-              | \tj{\Gamma}!(tmesub ${2})!(inline-text)
-              |}{\tj{\Gamma}!(readI (tmesub ${1}) (tmesub ${2}))!(inline-boxes)}
+            | \derive?!(name = ${\text!{(T-LamB)}}){
+                | \tj{
+                    \overwrite{\Gamma}{#vx}{\mtype!(context)}
+                  }!(tme)!(
+                    tymtausub ${1} --> (of-math ${\cdots} -->
+                      (tymtausub ${n} --> block-boxes)))
+                |}{
+                  \tj{\Gamma}!(lamB vx tme)!(cmdB
+                    [tymtausub ${1}, of-math ${\cdots}, tymtausub ${n}])
+                }
 
-          | \derive?:{\text!{(T-ReadB)}}{
-              | \tj{\Gamma}!(tmesub ${1})!(context)
-              | \tj{\Gamma}!(tmesub ${2})!(block-text)
-              |}{\tj{\Gamma}!(readB (tmesub ${1}) (tmesub ${2}))!(block-boxes)}
+            |})));%
 
-          | \derive?:{\text!{(T-BoxI)}}{||}{
-              \tj{\Gamma}!(boxI tmIb)!(inline-boxes)
-            }
+          ただし ${\Delta} は定数をその型に写す写像，
+          ${\mtype!(Type.tymsigma) \geqslant \mtype!(Type.tymtau)} は
+          単相型 ${\mtype!(Type.tymtau)} が多相型 ${\mtype!(Type.tymsigma)} の
+          インスタンスであること，
+          ${\app{\mathrm{Gen}}{\Gamma, \mtype!(Type.tymtau)}} は
+          単相型 ${\mtype!(Type.tymtau)} の
+          型環境 ${\Gamma} に基づいた閉包である多相型をそれぞれ表す．
+          インラインテキストおよびブロックテキストに対する型つけ規則は
+          以下で与えられる：
 
-          | \derive?:{\text!{(T-BoxB)}}{||}{
-              \tj{\Gamma}!(boxB tmBb)!(block-boxes)
-            }
+          \math-list(Term.(Type.(${
+            | \derive?!(name = ${\text!{(TI-Empty)}}){||}{
+                \tjI{\Gamma}!(!${\epsilon})}
 
-          | \derive?:{\text!{(T-TextI)}}{
-              | \tjI{\Gamma}!(tmIt)
-              |}{
-                \tj{\Gamma}!(textI tmIt)!(inline-text)
-              }
+            | \derive?!(name = ${\text!{(TI-Char)}}){
+                | \tjI{\Gamma}!(tmIt)
+                |}{\tjI{\Gamma}!(cat tmchar tmIt)}
 
-          | \derive?:{\text!{(T-TextB)}}{
-              | \tjB{\Gamma}!(tmBt)
-              |}{
-                \tj{\Gamma}!(textB tmBt)!(block-text)
-              }
+            | \derive?!(name = ${\text!{(TB-Empty)}}){||}{
+                \tjB{\Gamma}!(!${\epsilon})}
 
-          | \derive?:{\text!{(T-LamI)}}{
-              | \tj{
-                  \overwrite{\Gamma}{#vx}{\mtype!(context)}
-                }!(tme)!(
-                  tymtausub ${1} --> (of-math ${\cdots} -->
-                    (tymtausub ${n} --> inline-boxes)))
-              |}{
-                \tj{\Gamma}!(lamI vx tme)!(cmdI
-                  [tymtausub ${1}; of-math ${\cdots}; tymtausub ${n}])
-              }
+            | \derive-multi?!(name = ${\text!{(TI-Command)}})!(7cm){
+                | \tj{\Gamma}!(tmesub ${0})!(cmdI
+                    [tymtausub ${1}, of-math ${\cdots}, tymtausub ${n}])
+                | \tj{\Gamma}!(tmesub ${i})!(tymtausub ${i})
+                    \text!{\quad;(for each ${i})}
+                | \tjI{\Gamma}!(tmIt)
+                |}{\tjI{\Gamma}!(cat (Term.paren (appseq (tmesub ${0})
+                    [tmesub ${1}, !${\cdots}, tmesub ${n}])) tmIt)}
 
-          | \derive?:{\text!{(T-LamB)}}{
-              | \tj{
-                  \overwrite{\Gamma}{#vx}{\mtype!(context)}
-                }!(tme)!(
-                  tymtausub ${1} --> (of-math ${\cdots} -->
-                    (tymtausub ${n} --> block-boxes)))
-              |}{
-                \tj{\Gamma}!(lamB vx tme)!(cmdB
-                  [tymtausub ${1}; of-math ${\cdots}; tymtausub ${n}])
-              }
+            | \derive-multi?!(name = ${\text!{(TB-Command)}})!(7cm){
+                | \tj{\Gamma}!(tmesub ${0})!(cmdB
+                    [tymtausub ${1}, of-math ${\cdots}, tymtausub ${n}])
+                | \tj{\Gamma}!(tmesub ${i})!(tymtausub ${i})
+                    \text!{\quad;(for each ${i})}
+                | \tjB{\Gamma}!(tmBt)
+                |}{\tjB{\Gamma}!(cat (Term.paren (appseq (tmesub ${0})
+                    [tmesub ${1}, !${\cdots}, tmesub ${n}])) tmBt)}
+            |})));%
+        }
+      >
+      +subsection{考察}<
+        +p{
+          インラインテキストやブロックテキストが値であり，
+          ${\term!(Term.(paren (readI !${\text!{-}} !${\text!{-}})))} や
+          ${\term!(Term.(paren (readB !${\text!{-}} !${\text!{-}})))} によって
+          はじめてその中身の評価が起動するという形式化は，幾分不自然に感じられたかもしれない．
+          どうしてこんな一見回りくどい方式を採っているのだろう？\quad;
+          実は，これは自動組版処理で行なわれる “本質的に手続き的な処理” に起因する．
+          次のような例を考えると納得がいくかもしれない：\quad;
+          仮に\SATySFi;が
+          テキストの評価も通常のプログラムの式と同じように
+          “値呼び戦略風の” 評価順序で評価されるような
+          何らかの操作的意味論をもつ言語だったとしよう．
+          この仮定の下で，以下のテキストを評価することを考える：
 
-          |})));%
-
-        ただし ${\Delta} は定数をその型に写す写像，
-        ${\mtype!(Type.tymsigma) \geqslant \mtype!(Type.tymtau)} は
-        単相型 ${\mtype!(Type.tymtau)} が多相型 ${\mtype!(Type.tymsigma)} の
-        インスタンスであること，
-        ${\app{\mathrm{Gen}}{\Gamma, \mtype!(Type.tymtau)}} は
-        単相型 ${\mtype!(Type.tymtau)} の
-        型環境 ${\Gamma} に基づいた閉包である多相型をそれぞれ表す．
-        インラインテキストおよびブロックテキストに対する型つけ規則は
-        以下で与えられる：
-
-        \math-list(Term.(Type.(${
-          | \derive?:{\text!{(TI-Empty)}}{||}{
-              \tjI{\Gamma}!(!${\epsilon})}
-
-          | \derive?:{\text!{(TI-Char)}}{
-              | \tjI{\Gamma}!(tmIt)
-              |}{\tjI{\Gamma}!(cat tmchar tmIt)}
-
-          | \derive?:{\text!{(TB-Empty)}}{||}{
-              \tjB{\Gamma}!(!${\epsilon})}
-
-          | \derive-multi?:{\text!{(TI-Command)}}!(7cm){
-              | \tj{\Gamma}!(tmesub ${0})!(cmdI
-                  [tymtausub ${1}; of-math ${\cdots}; tymtausub ${n}])
-              | \tj{\Gamma}!(tmesub ${i})!(tymtausub ${i})
-                  \text!{\quad;(for each ${i})}
-              | \tjI{\Gamma}!(tmIt)
-              |}{\tjI{\Gamma}!(cat (Term.paren (appseq (tmesub ${0})
-                  [tmesub ${1}; !${\cdots}; tmesub ${n}])) tmIt)}
-
-          | \derive-multi?:{\text!{(TB-Command)}}!(7cm){
-              | \tj{\Gamma}!(tmesub ${0})!(cmdB
-                  [tymtausub ${1}; of-math ${\cdots}; tymtausub ${n}])
-              | \tj{\Gamma}!(tmesub ${i})!(tymtausub ${i})
-                  \text!{\quad;(for each ${i})}
-              | \tjB{\Gamma}!(tmBt)
-              |}{\tjB{\Gamma}!(cat (Term.paren (appseq (tmesub ${0})
-                  [tmesub ${1}; !${\cdots}; tmesub ${n}])) tmBt)}
-          |})));%
-      }
-    >
-    +subsection{考察}<
-      +p{
-        インラインテキストやブロックテキストが値であり，
-        ${\term!(Term.(paren (readI !${\text!{-}} !${\text!{-}})))} や
-        ${\term!(Term.(paren (readB !${\text!{-}} !${\text!{-}})))} によって
-        はじめてその中身の評価が起動するという形式化は，幾分不自然に感じられたかもしれない．
-        どうしてこんな一見回りくどい方式を採っているのだろう？\quad;
-        実は，これは自動組版処理で行なわれる “本質的に手続き的な処理” に起因する．
-        次のような例を考えると納得がいくかもしれない：\quad;
-        仮に\SATySFi;が
-        テキストの評価も通常のプログラムの式と同じように
-        “値呼び戦略風の” 評価順序で評価されるような
-        何らかの操作的意味論をもつ言語だったとしよう．
-        この仮定の下で，以下のテキストを評価することを考える：
-
-        \d-code(```
-          +section{外側}<
-            +subsection{内側}<
-              （略）
+          \d-code(```
+            +section{外側}<
+              +subsection{内側}<
+                （略）
+              >
+             （略）
             >
-           （略）
-          >
-        ```);%
+          ```);%
 
-        このとき，\codem{+subsection}の適用は，
-        \codem{+section}の適用よりも先に評価されることになる．
-        これは章節番号を自動で挿入する処理とは非常に相性が悪い．
-        このような操作的意味論の下でも章節番号を正確に自動で入れる方法は
-        依然としてあるかもしれないが，少なくとも自然に記述することはかなり困難だろう．
-        結局このような例から
-        「テキストに対する評価は “遅延評価風の” 評価順序にした方が筋が良いだろう」
-        という判断をし，本章で紹介したような言語が
-        \SATySFi;の核をなすことになったのである．
-      }
+          このとき，\codem{+subsection}の適用は，
+          \codem{+section}の適用よりも先に評価されることになる．
+          これは章節番号を自動で挿入する処理とは非常に相性が悪い．
+          このような操作的意味論の下でも章節番号を正確に自動で入れる方法は
+          依然としてあるかもしれないが，少なくとも自然に記述することはかなり困難だろう．
+          結局このような例から
+          「テキストに対する評価は “遅延評価風の” 評価順序にした方が筋が良いだろう」
+          という判断をし，本章で紹介したような言語が
+          \SATySFi;の核をなすことになったのである．
+        }
+      >
     >
   >
->
+end

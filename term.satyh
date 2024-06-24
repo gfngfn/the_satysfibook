@@ -1,760 +1,796 @@
-@require: list
-@require: option
-@require: color
-@require: math
-@import: book-class
+use package open Stdlib
+use package Math
+use open BookClass of `book-class`
 
 
-let term-color = Color.black %Color.rgb 0. 0. 0.5
-let type-color = Color.rgb 0.75 0.25 0.
+module Term = struct
+  val term-color = Color.black %Color.rgb 0. 0. 0.5
+  val type-color = Color.rgb 0.75 0.25 0.
+
+    val extract-spec-from-context ctx =
+      let fontsize = get-font-size ctx in
+      let hgtaxis = fontsize *' get-math-axis-height-ratio ctx in
+      let color = get-text-color ctx in
+      (fontsize, hgtaxis, color)
+
+    val bbrace-left hgt dpt ctx =
+      let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+
+      let t0 = fontsize *' 0.0125 in
+      let t4 = fontsize *' 0.025 in
+
+      let halflen = Math.half-length hgt dpt hgtaxis fontsize in
+      let h-straight =  halflen *' 0.9 -' fontsize *' 0.3 in
+      let w-straight = h-straight *' 0.15 in
+      let w1 = fontsize *' 0.0125 in
+      let w2 = fontsize *' 0.02 in
+      let w5 = fontsize *' 0.01 in
+      let w6 = fontsize *' 0.015 in
+      let w-extra = fontsize *' 0.1 in
+
+      let x0 = fontsize *' 0.125 in
+      let x1 = fontsize *' 0.25 in
+      let x2 = x1 -' w-straight in
+      let x3 = x2 +' fontsize *' 0.2 in
+      let x4 = x3 +' fontsize *' 0.01 in
+      let x5 = x2 +' fontsize *' 0.0625 in
+      let x6 = x5 +' w-straight in
+      let x7 = fontsize *' 0.225 in
+
+      let p0 = fontsize *' 0.2 in
+      let p1 = x1 +' w1 in
+      let p2 = x2 -' w2 in
+      let p3 = x3 -' fontsize *' 0.1 in
+      let p4 = x4 -' fontsize *' 0.09 in
+      let p5 = x5 -' w5 in
+      let p6 = x6 +' w6 in
+      let p7 = fontsize *' 0.3 in
+
+      let y0 = t0 in
+      let y1 = fontsize *' 0.125 in
+      let y2 = y1 +' h-straight in
+      let y3 = halflen in
+      let y4 = halflen -' t4 in
+      let y5 = halflen -' fontsize *' 0.175 in
+      let y6 = y5 -' h-straight in
+      let y7 = 0pt in
+
+      let q0 = y0 in
+      let q1 = y1 -' (y2 -' y1) *' ((x1 -' p1) /' (x2 -' x1)) in
+      let q2 = y2 +' (y2 -' y1) *' ((p2 -' x2) /' (x2 -' x1)) in
+      let q3 = halflen -' fontsize *' 0.00875 in
+      let q4 = halflen -' t4 -' fontsize *' 0.01 in
+      let q5 = y5 +' (y5 -' y6) *' ((p5 -' x5) /' (x5 -' x6)) in
+      let q6 = y6 -' (y5 -' y6) *' ((x6 -' p6) /' (x5 -' x6)) in
+      let q7 = fontsize *' 0.025 in
+
+      let path (xpos, ypos) =
+        let ycenter = ypos +' hgtaxis in
+        let fP (x, y) = (xpos +' x, ycenter +' y) in
+        let fN (x, y) = (xpos +' x, ycenter -' y) in
+          start-path   (fP (x0, y0))
+            |> bezier-to (fP (p0, q0)) (fP (p1, q1)) (fP (x1, y1))
+            |> line-to (fP (x2, y2))
+            |> bezier-to (fP (p2, q2)) (fP (p3, q3)) (fP (x3, y3))
+            |> line-to (fP (x4, y4))
+  %          |> bezier-to (fP (p4, q4)) (fP (p5, q5)) (fP (x5, y5))
+  %          |> line-to (fP (x6, y6))
+  %          |> bezier-to (fP (p6, q6)) (fP (p7, q7)) (fP (x7, y7))
+  %          |> bezier-to (fN (p7, q7)) (fN (p6, q6)) (fN (x6, y6))
+  %          |> line-to (fN (x5, y5))
+  %          |> bezier-to (fN (p5, q5)) (fN (p4, q4)) (fN (x4, y4))
+
+            |> line-to (fN (x4, y4))
+
+            |> line-to (fN (x3, y3))
+            |> bezier-to (fN (p3, q3)) (fN (p2, q2)) (fN (x2, y2))
+            |> line-to (fN (x1, y1))
+            |> bezier-to (fN (p1, q1)) (fN (p0, q0)) (fN (x0, y0))
+            |> close-with-line
+      in
+      let graphics point = fill color (path point) in
+      let kerninfo _ = 0pt in
+        (inline-graphics (x4 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-  let bbrace-left hgt dpt hgtaxis fontsize color =
+    val bbrace-right hgt dpt ctx =
+      let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
 
-    let t0 = fontsize *' 0.0125 in
-    let t4 = fontsize *' 0.025 in
+      let t0 = fontsize *' 0.0125 in
+      let t4 = fontsize *' 0.025 in
 
-    let halflen = Math.half-length hgt dpt hgtaxis fontsize in
-    let h-straight =  halflen *' 0.9 -' fontsize *' 0.3 in
-    let w-straight = h-straight *' 0.15 in
-    let w1 = fontsize *' 0.0125 in
-    let w2 = fontsize *' 0.02 in
-    let w5 = fontsize *' 0.01 in
-    let w6 = fontsize *' 0.015 in
-    let w-extra = fontsize *' 0.1 in
+      let halflen = Math.half-length hgt dpt hgtaxis fontsize in
+      let h-straight =  halflen *' 0.9 -' fontsize *' 0.3 in
+      let w-straight = h-straight *' 0.15 in
+      let w1 = fontsize *' 0.0125 in
+      let w2 = fontsize *' 0.02 in
+      let w5 = fontsize *' 0.01 in
+      let w6 = fontsize *' 0.015 in
+      let w-extra = fontsize *' 0.1 in
 
-    let x0 = fontsize *' 0.125 in
-    let x1 = fontsize *' 0.25 in
-    let x2 = x1 -' w-straight in
-    let x3 = x2 +' fontsize *' 0.2 in
-    let x4 = x3 +' fontsize *' 0.01 in
-    let x5 = x2 +' fontsize *' 0.0625 in
-    let x6 = x5 +' w-straight in
-    let x7 = fontsize *' 0.225 in
+      let x0 = w-extra +' fontsize *' 0.125 in
+      let x1 = w-extra +' fontsize *' 0.25 in
+      let x2 = x1 -' w-straight in
+      let x3 = x2 +' fontsize *' 0.2 in
+      let x4 = x3 +' fontsize *' 0.01 in
+      let x5 = x2 +' fontsize *' 0.0625 in
+      let x6 = x5 +' w-straight in
+      let x7 = w-extra +' fontsize *' 0.225 in
 
-    let p0 = fontsize *' 0.2 in
-    let p1 = x1 +' w1 in
-    let p2 = x2 -' w2 in
-    let p3 = x3 -' fontsize *' 0.1 in
-    let p4 = x4 -' fontsize *' 0.09 in
-    let p5 = x5 -' w5 in
-    let p6 = x6 +' w6 in
-    let p7 = fontsize *' 0.3 in
+      let p0 = w-extra +' fontsize *' 0.2 in
+      let p1 = x1 +' w1 in
+      let p2 = x2 -' w2 in
+      let p3 = x3 -' fontsize *' 0.1 in
+      let p4 = x4 -' fontsize *' 0.09 in
+      let p5 = x5 -' w5 in
+      let p6 = x6 +' w6 in
+      let p7 = w-extra +' fontsize *' 0.3 in
 
-    let y0 = t0 in
-    let y1 = fontsize *' 0.125 in
-    let y2 = y1 +' h-straight in
-    let y3 = halflen in
-    let y4 = halflen -' t4 in
-    let y5 = halflen -' fontsize *' 0.175 in
-    let y6 = y5 -' h-straight in
-    let y7 = 0pt in
+      let y0 = t0 in
+      let y1 = fontsize *' 0.125 in
+      let y2 = y1 +' h-straight in
+      let y3 = halflen in
+      let y4 = halflen -' t4 in
+      let y5 = halflen -' fontsize *' 0.175 in
+      let y6 = y5 -' h-straight in
+      let y7 = 0pt in
 
-    let q0 = y0 in
-    let q1 = y1 -' (y2 -' y1) *' ((x1 -' p1) /' (x2 -' x1)) in
-    let q2 = y2 +' (y2 -' y1) *' ((p2 -' x2) /' (x2 -' x1)) in
-    let q3 = halflen -' fontsize *' 0.00875 in
-    let q4 = halflen -' t4 -' fontsize *' 0.01 in
-    let q5 = y5 +' (y5 -' y6) *' ((p5 -' x5) /' (x5 -' x6)) in
-    let q6 = y6 -' (y5 -' y6) *' ((x6 -' p6) /' (x5 -' x6)) in
-    let q7 = fontsize *' 0.025 in
+      let q0 = y0 in
+      let q1 = y1 -' (y2 -' y1) *' ((x1 -' p1) /' (x2 -' x1)) in
+      let q2 = y2 +' (y2 -' y1) *' ((p2 -' x2) /' (x2 -' x1)) in
+      let q3 = halflen -' fontsize *' 0.00875 in
+      let q4 = halflen -' t4 -' fontsize *' 0.01 in
+      let q5 = y5 +' (y5 -' y6) *' ((p5 -' x5) /' (x5 -' x6)) in
+      let q6 = y6 -' (y5 -' y6) *' ((x6 -' p6) /' (x5 -' x6)) in
+      let q7 = fontsize *' 0.025 in
 
-    let path (xpos, ypos) =
-      let ycenter = ypos +' hgtaxis in
-      let fP (x, y) = (xpos +' x, ycenter +' y) in
-      let fN (x, y) = (xpos +' x, ycenter -' y) in
-        start-path   (fP (x0, y0))
-          |> bezier-to (fP (p0, q0)) (fP (p1, q1)) (fP (x1, y1))
-          |> line-to (fP (x2, y2))
-          |> bezier-to (fP (p2, q2)) (fP (p3, q3)) (fP (x3, y3))
-          |> line-to (fP (x4, y4))
-%          |> bezier-to (fP (p4, q4)) (fP (p5, q5)) (fP (x5, y5))
-%          |> line-to (fP (x6, y6))
-%          |> bezier-to (fP (p6, q6)) (fP (p7, q7)) (fP (x7, y7))
-%          |> bezier-to (fN (p7, q7)) (fN (p6, q6)) (fN (x6, y6))
-%          |> line-to (fN (x5, y5))
-%          |> bezier-to (fN (p5, q5)) (fN (p4, q4)) (fN (x4, y4))
+      let path (xpos, ypos) =
+        let ycenter = ypos +' hgtaxis in
+        let fP (x, y) = (xpos +' x4 -' x +' w-extra, ycenter +' y) in
+        let fN (x, y) = (xpos +' x4 -' x +' w-extra, ycenter -' y) in
+          start-path   (fP (x0, y0))
+            |> bezier-to (fP (p0, q0)) (fP (p1, q1)) (fP (x1, y1))
+            |> line-to (fP (x2, y2))
+            |> bezier-to (fP (p2, q2)) (fP (p3, q3)) (fP (x3, y3))
+            |> line-to (fP (x4, y4))
+  %          |> bezier-to (fP (p4, q4)) (fP (p5, q5)) (fP (x5, y5))
+  %          |> line-to (fP (x6, y6))
+  %          |> bezier-to (fP (p6, q6)) (fP (p7, q7)) (fP (x7, y7))
+  %          |> bezier-to (fN (p7, q7)) (fN (p6, q6)) (fN (x6, y6))
+  %          |> line-to (fN (x5, y5))
+  %          |> bezier-to (fN (p5, q5)) (fN (p4, q4)) (fN (x4, y4))
 
-          |> line-to (fN (x4, y4))
+            |> line-to (fN (x4, y4))
 
-          |> line-to (fN (x3, y3))
-          |> bezier-to (fN (p3, q3)) (fN (p2, q2)) (fN (x2, y2))
-          |> line-to (fN (x1, y1))
-          |> bezier-to (fN (p1, q1)) (fN (p0, q0)) (fN (x0, y0))
+            |> line-to (fN (x3, y3))
+            |> bezier-to (fN (p3, q3)) (fN (p2, q2)) (fN (x2, y2))
+            |> line-to (fN (x1, y1))
+            |> bezier-to (fN (p1, q1)) (fN (p0, q0)) (fN (x0, y0))
+            |> close-with-line
+      in
+      let graphics point = fill color (path point) in
+      let kerninfo _ = 0pt in
+        (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+    val bangle-left hgt dpt ctx =
+      let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+
+      let halflen = Math.half-length hgt dpt hgtaxis fontsize in
+      let widparen = halflen *' 0.375 in
+      let widextra = fontsize *' 0.05 in
+      let widouter = fontsize *' 0.1 in
+      let widinner = fontsize *' 0.1 in
+      let wid = widparen +' widextra +' widouter +' widinner in
+      let path (xpos, ypos) =
+        let yc = ypos +' hgtaxis in
+        start-path (xpos +' widparen, yc +' halflen)
+          |> line-to (xpos, yc)
+          |> line-to (xpos +' widparen, yc -' halflen)
+          |> line-to (xpos +' widparen +' widextra, yc -' halflen)
+          |> line-to (xpos +' widparen +' widextra, yc +' halflen)
           |> close-with-line
-    in
-    let graphics point = [ fill color (path point); ] in
-    let kerninfo _ = 0pt in
-      (inline-graphics (x4 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+          |> shift-path (widouter, 0pt)
+      in
+      let graphics point = fill color (path point) in
+      let kerninfo y =
+        let widkern = widparen in
+        let r = 0. in
+        let gap = Pervasives.length-abs (y -' hgtaxis) in
+          if halflen *' r <' gap then
+            widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
+          else
+            0pt
+      in
+        (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
+    val bangle-right hgt dpt ctx =
+      let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
 
-  let bbrace-right hgt dpt hgtaxis fontsize color =
-
-    let t0 = fontsize *' 0.0125 in
-    let t4 = fontsize *' 0.025 in
-
-    let halflen = Math.half-length hgt dpt hgtaxis fontsize in
-    let h-straight =  halflen *' 0.9 -' fontsize *' 0.3 in
-    let w-straight = h-straight *' 0.15 in
-    let w1 = fontsize *' 0.0125 in
-    let w2 = fontsize *' 0.02 in
-    let w5 = fontsize *' 0.01 in
-    let w6 = fontsize *' 0.015 in
-    let w-extra = fontsize *' 0.1 in
-
-    let x0 = w-extra +' fontsize *' 0.125 in
-    let x1 = w-extra +' fontsize *' 0.25 in
-    let x2 = x1 -' w-straight in
-    let x3 = x2 +' fontsize *' 0.2 in
-    let x4 = x3 +' fontsize *' 0.01 in
-    let x5 = x2 +' fontsize *' 0.0625 in
-    let x6 = x5 +' w-straight in
-    let x7 = w-extra +' fontsize *' 0.225 in
-
-    let p0 = w-extra +' fontsize *' 0.2 in
-    let p1 = x1 +' w1 in
-    let p2 = x2 -' w2 in
-    let p3 = x3 -' fontsize *' 0.1 in
-    let p4 = x4 -' fontsize *' 0.09 in
-    let p5 = x5 -' w5 in
-    let p6 = x6 +' w6 in
-    let p7 = w-extra +' fontsize *' 0.3 in
-
-    let y0 = t0 in
-    let y1 = fontsize *' 0.125 in
-    let y2 = y1 +' h-straight in
-    let y3 = halflen in
-    let y4 = halflen -' t4 in
-    let y5 = halflen -' fontsize *' 0.175 in
-    let y6 = y5 -' h-straight in
-    let y7 = 0pt in
-
-    let q0 = y0 in
-    let q1 = y1 -' (y2 -' y1) *' ((x1 -' p1) /' (x2 -' x1)) in
-    let q2 = y2 +' (y2 -' y1) *' ((p2 -' x2) /' (x2 -' x1)) in
-    let q3 = halflen -' fontsize *' 0.00875 in
-    let q4 = halflen -' t4 -' fontsize *' 0.01 in
-    let q5 = y5 +' (y5 -' y6) *' ((p5 -' x5) /' (x5 -' x6)) in
-    let q6 = y6 -' (y5 -' y6) *' ((x6 -' p6) /' (x5 -' x6)) in
-    let q7 = fontsize *' 0.025 in
-
-    let path (xpos, ypos) =
-      let ycenter = ypos +' hgtaxis in
-      let fP (x, y) = (xpos +' x4 -' x +' w-extra, ycenter +' y) in
-      let fN (x, y) = (xpos +' x4 -' x +' w-extra, ycenter -' y) in
-        start-path   (fP (x0, y0))
-          |> bezier-to (fP (p0, q0)) (fP (p1, q1)) (fP (x1, y1))
-          |> line-to (fP (x2, y2))
-          |> bezier-to (fP (p2, q2)) (fP (p3, q3)) (fP (x3, y3))
-          |> line-to (fP (x4, y4))
-%          |> bezier-to (fP (p4, q4)) (fP (p5, q5)) (fP (x5, y5))
-%          |> line-to (fP (x6, y6))
-%          |> bezier-to (fP (p6, q6)) (fP (p7, q7)) (fP (x7, y7))
-%          |> bezier-to (fN (p7, q7)) (fN (p6, q6)) (fN (x6, y6))
-%          |> line-to (fN (x5, y5))
-%          |> bezier-to (fN (p5, q5)) (fN (p4, q4)) (fN (x4, y4))
-
-          |> line-to (fN (x4, y4))
-
-          |> line-to (fN (x3, y3))
-          |> bezier-to (fN (p3, q3)) (fN (p2, q2)) (fN (x2, y2))
-          |> line-to (fN (x1, y1))
-          |> bezier-to (fN (p1, q1)) (fN (p0, q0)) (fN (x0, y0))
+      let halflen = Math.half-length hgt dpt hgtaxis fontsize in
+      let widparen = halflen *' 0.375 in
+      let widextra = fontsize *' 0.05 in
+      let widouter = fontsize *' 0.1 in
+      let widinner = fontsize *' 0.1 in
+      let wid = widparen +' widextra +' widouter +' widinner in
+      let path (xpos, ypos) =
+        let xr = xpos +' widinner +' widextra +' widparen in
+        let yc = ypos +' hgtaxis in
+        start-path (xr -' widparen, yc +' halflen)
+          |> line-to (xr, yc)
+          |> line-to (xr -' widparen, yc -' halflen)
+          |> line-to (xr -' widparen -' widextra, yc -' halflen)
+          |> line-to (xr -' widparen -' widextra, yc +' halflen)
           |> close-with-line
+      in
+      let graphics point = fill color (path point) in
+      let kerninfo y =
+        let widkern = widparen in
+        let r = 0. in
+        let gap = Pervasives.length-abs (y -' hgtaxis) in
+          if halflen *' r <' gap then
+            widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
+          else
+            0pt
+      in
+        (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  val math ctx \subst mt mx me =
+    let open Math in
+    let ms =
+      math-paren-with-middle ctx sqbracket-left sqbracket-right slash-middle [
+        read-math ctx mt,
+        read-math ctx mx
+      ]
     in
-    let graphics point = [ fill color (path point); ] in
-    let kerninfo _ = 0pt in
-      (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+      math-concat ms (read-math ctx me)
 
 
-  let bangle-left hgt dpt hgtaxis fontsize color =
-    let halflen = Math.half-length hgt dpt hgtaxis fontsize in
-    let widparen = halflen *' 0.375 in
-    let widextra = fontsize *' 0.05 in
-    let widouter = fontsize *' 0.1 in
-    let widinner = fontsize *' 0.1 in
-    let wid = widparen +' widextra +' widouter +' widinner in
-    let path (xpos, ypos) =
-      let yc = ypos +' hgtaxis in
-      start-path (xpos +' widparen, yc +' halflen)
-        |> line-to (xpos, yc)
-        |> line-to (xpos +' widparen, yc -' halflen)
-        |> line-to (xpos +' widparen +' widextra, yc -' halflen)
-        |> line-to (xpos +' widparen +' widextra, yc +' halflen)
-        |> close-with-line
-        |> shift-path (widouter, 0pt)
-    in
-    let graphics point = [ fill color (path point); ] in
-    let kerninfo y =
-      let widkern = widparen in
-      let r = 0. in
-      let gap = length-abs (y -' hgtaxis) in
-        if halflen *' r <' gap then
-          widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
-        else
-          0pt
-    in
-      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
-
-  let bangle-right hgt dpt hgtaxis fontsize color =
-    let halflen = Math.half-length hgt dpt hgtaxis fontsize in
-    let widparen = halflen *' 0.375 in
-    let widextra = fontsize *' 0.05 in
-    let widouter = fontsize *' 0.1 in
-    let widinner = fontsize *' 0.1 in
-    let wid = widparen +' widextra +' widouter +' widinner in
-    let path (xpos, ypos) =
-      let xr = xpos +' widinner +' widextra +' widparen in
-      let yc = ypos +' hgtaxis in
-      start-path (xr -' widparen, yc +' halflen)
-        |> line-to (xr, yc)
-        |> line-to (xr -' widparen, yc -' halflen)
-        |> line-to (xr -' widparen -' widextra, yc -' halflen)
-        |> line-to (xr -' widparen -' widextra, yc +' halflen)
-        |> close-with-line
-    in
-    let graphics point = [ fill color (path point); ] in
-    let kerninfo y =
-      let widkern = widparen in
-      let r = 0. in
-      let gap = length-abs (y -' hgtaxis) in
-        if halflen *' r <' gap then
-          widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
-        else
-          0pt
-    in
-      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+  val math ctx \subst-hole mC me =
+    read-math ctx ${#mC\Math.sqbracket{#me}}
 
 
-let-math \subst mt mx me =
-  open Math in
-  let ms =
-    math-paren-with-middle sqbracket-left sqbracket-right slash-middle [mt; mx]
-  in
-    ${#ms#me}
+  val join-args =
+    List.fold-left (fun macc m -> ${#macc\ #m}) ${}
 
 
-let-math \subst-hole mC me =
-  ${#mC\sqbracket{#me}}
+  type var = math-text
 
 
-let join-args =
-  List.fold-left (fun macc m -> ${#macc\ #m}) ${}
+  module Term :> sig
+    type t :: o
+    val (!) : var -> t
+    val app : t -> ?(b : bool) t -> t
+    val appseq : t -> list t -> t
+    val lam : var -> ?(b : bool) t -> t
+    val fix : var -> var -> t -> t
+    val let-in : ?(is-rec : bool) var -> ?(args : list var, b1 : bool) t -> ?(b2 : bool) option t -> t
+    val ifte : t -> ?(b1 : bool) t -> ?(b2 : bool) t -> t
+    val bin : var -> t -> t -> t
+    val prim : var -> list t -> t
+    val truev : t
+    val falsev : t
+    val hole : t
+    val paren : t -> t
+    val subst : t -> var -> t -> t
+    val subst-hole : math-text -> t -> t
+    val show : t -> math-text
+    val display : length -> context -> t -> inline-boxes
+    val (+>) : var -> math-text -> t
+    val readI : t -> t -> t
+    val readB : t -> t -> t
+    val textI : t -> t
+    val textB : t -> t
+    val boxI : t -> t
+    val boxB : t -> t
+    val lamI : var -> ?(b : bool) t -> t
+    val lamB : var -> ?(b : bool) t -> t
+    val star : t -> t
+    val cat : t -> t -> t
+
+  % ---- metavariables --
+    val tmc : t
+    val tme : t
+    val tmv : t
+    val tmctx : t
+    val tmchar : t
+    val tmchi : t
+    val tmit : t
+    val tmbt : t
+    val tmib : t
+    val tmbb : t
+    val tmIt : t
+    val tmBt : t
+    val tmIb : t
+    val tmIbp : t
+    val tmBb : t
+    val tmBbp : t
+    val tmesub : math-text -> t
+    val tmvsub : math-text -> t
+    val vx : var
+    val vy : var
+
+  end = struct
+    type t =
+      | Var    of var
+      | Lambda of option var * var * bool * t
+      | Fix    of var * var * t
+      | App    of t * bool * t
+      | LetIn  of bool * var * list var * bool * t * bool * option t
+      | If     of t * bool * t * bool * t
+      | Paren  of (math-text -> math-text) * (length * length -> math-text) * (length * length -> math-text) * t
+      | Constr of var * list t
+      | BinOp  of var * t * t
+      | Hole
+      | Subst  of t * var * t
+      | SubstHole of math-text * t
+      | Prim   of var * list t
+
+    val reset-thickness = 1.5pt
+
+    val math ctx \embed mb = mb ctx
+
+    val math-color color m ctx =
+      read-math (ctx |> set-text-color color) m
+
+    val math ctx \reset-bracket m =
+      let open Math in
+        math-paren ctx (angle-left reset-thickness) (angle-right reset-thickness) (read-math ctx m)
+
+    val math ctx \token w =
+      math-color term-color ${\Math.mathbf{#w}} ctx
+
+    val enclose parenf m =
+      ${\embed!(
+        let mi = parenf ${\embed!(math-color Color.black m)} in
+        math-color term-color mi
+      )}
+
+    val (!) mx = Var(mx)
+
+    val lam mx ?(b = bopt) t = Lambda(None, mx, Option.from false bopt, t)
+
+    val fix mf mx t = Fix(mf, mx, t)
+
+    val app t1 ?(b = bopt) t2 = App(t1, Option.from false bopt, t2)
+
+    val appseq t1 tlst =
+      List.fold-right (fun t tacc -> App(tacc, false, t)) t1 (List.reverse tlst)
+
+    val let-in ?(is-rec = is-rec) mx ?(args = args, b1 = b1) t1 ?(b2 = b2) t2opt =
+      let open Option in
+      LetIn(from false is-rec, mx, from [] args, from false b1, t1, from false b2, t2opt)
+
+    val ifte t0 ?(b1 = b1opt) t1 ?(b2 = b2opt) t2 =
+      let open Option in
+      let b2 = from false b2opt in
+      let () = display-message (`ifte (` ^ (if b2 then `T` else `F`) ^ `)`) in
+      If(t0, from false b1opt, t1, b2, t2)
+
+    val bin mop t1 t2 = BinOp(mop, t1, t2)
+
+    val prim mop tlst = Prim(mop, tlst)
+
+    val truev = Var(${\Math.mathrm{true}})
+
+    val falsev = Var(${\Math.mathrm{false}})
+
+    val hole = Hole
+
+    val constr m ts = Constr(m, ts)
+
+    val subst t1 mx t2 = Subst(t1, mx, t2)
+
+    val subst-hole mC t0 = SubstHole(mC, t0)
 
 
-type var = math
+    val paren-scheme pL pR (h, d) =
+      ${\embed!(fun ctx ->
+        let ctx = ctx |> set-text-color term-color in
+        math-paren ctx pL pR
+          (embed-inline-to-math MathOrd (inline-graphics 0pt h d (fun _ -> Gr.empty)))
+      )}
 
 
-module Term : sig
-  type t
-  val (!) : var -> t
-  val app : t -> bool?-> t -> t
-  val appseq : t -> t list -> t
-  val lam : var -> bool?-> t -> t
-  val fix : var -> var -> t -> t
-  val let-in : bool?-> var -> var list?-> bool?-> t -> bool?-> t option -> t
-  val ifte : t -> bool?-> t -> bool?-> t -> t
-  val bin : var -> t -> t -> t
-  val prim : var -> t list -> t
-  val truev : t
-  val falsev : t
-  val hole : t
-  val paren : t -> t
-  val subst : t -> var -> t -> t
-  val subst-hole : math -> t -> t
-  val show : t -> math
-  val display : length -> context -> t -> inline-boxes
-  val (+>) : var -> math -> t
-  val readI : t -> t -> t
-  val readB : t -> t -> t
-  val textI : t -> t
-  val textB : t -> t
-  val boxI : t -> t
-  val boxB : t -> t
-  val lamI : var -> bool?-> t -> t
-  val lamB : var -> bool?-> t -> t
-  val star : t -> t
-  val cat : t -> t -> t
+    val parenL = paren-scheme Math.paren-left Math.empty-paren
+    val parenR = paren-scheme Math.empty-paren Math.paren-right
+    val paren-pair m = ${\Math.paren{#m}}
 
-% ---- metavariables --
-  val tmc : t
-  val tme : t
-  val tmv : t
-  val tmctx : t
-  val tmchar : t
-  val tmchi : t
-  val tmit : t
-  val tmbt : t
-  val tmib : t
-  val tmbb : t
-  val tmIt : t
-  val tmBt : t
-  val tmIb : t
-  val tmIbp : t
-  val tmBb : t
-  val tmBbp : t
-  val tmesub : math -> t
-  val tmvsub : math -> t
-  val vx : var
-  val vy : var
+    val angleL = paren-scheme (Math.angle-left reset-thickness) Math.empty-paren
+    val angleR = paren-scheme Math.empty-paren (Math.angle-right reset-thickness)
+    val angle-pair m = ${\Math.angle-bracket{#m}}
 
-end = struct
-  type t =
-    | Var    of var
-    | Lambda of var option * var * bool * t
-    | Fix    of var * var * t
-    | App    of t * bool * t
-    | LetIn  of bool * var * var list * bool * t * bool * t option
-    | If     of t * bool * t * bool * t
-    | Paren  of (math -> math) * (length * length -> math) * (length * length -> math) * t
-    | Constr of var * t list
-    | BinOp  of var * t * t
-    | Hole
-    | Subst  of t * var * t
-    | SubstHole of math * t
-    | Prim   of var * t list
+    val braceL = paren-scheme Math.brace-left Math.empty-paren
+    val braceR = paren-scheme Math.empty-paren Math.brace-right
+    val brace-pair m = ${\Math.brace{#m}}
 
-  let reset-thickness = 1.5pt
+    val bbraceL = paren-scheme bbrace-left Math.empty-paren
+    val bbraceR = paren-scheme Math.empty-paren bbrace-right
+    val bbrace-pair m = ${\embed!(fun ctx -> math-paren ctx bbrace-left bbrace-right (read-math ctx m))}
 
-  let-math \reset-bracket =
-    open Math in
-      math-paren (angle-left reset-thickness) (angle-right reset-thickness)
-
-  let-math \token w =
-    math-color term-color ${\mathbf{#w}}
-
-  let enclose parenf m =
-    let mi = parenf (math-color Color.black m) in
-    math-color term-color mi
-
-  let (!) mx = Var(mx)
-
-  let lam mx ?:bopt t = Lambda(None, mx, Option.from false bopt, t)
-
-  let fix mf mx t = Fix(mf, mx, t)
-
-  let app t1 ?:bopt t2 = App(t1, Option.from false bopt, t2)
-
-  let appseq t1 tlst =
-    List.fold-right (fun t tacc -> App(tacc, false, t)) t1 (List.reverse tlst)
-
-  let let-in ?:is-rec mx ?:args ?:b1 t1 ?:b2 t2opt =
-    open Option in
-    LetIn(from false is-rec, mx, from [] args, from false b1, t1, from false b2, t2opt)
-
-  let ifte t0 ?:b1opt t1 ?:b2opt t2 =
-    open Option in
-    let b2 = from false b2opt in
-    let () = display-message (`ifte (` ^ (if b2 then `T` else `F`) ^ `)`) in
-    If(t0, from false b1opt, t1, b2, t2)
-
-  let bin mop t1 t2 = BinOp(mop, t1, t2)
-
-  let prim mop tlst = Prim(mop, tlst)
-
-  let truev = Var(${\mathrm{true}})
-
-  let falsev = Var(${\mathrm{false}})
-
-  let hole = Hole
-
-  let constr m ts = Constr(m, ts)
-
-  let subst t1 mx t2 = Subst(t1, mx, t2)
-
-  let subst-hole mC t0 = SubstHole(mC, t0)
+    val bangleL = paren-scheme bangle-left Math.empty-paren
+    val bangleR = paren-scheme Math.empty-paren bangle-right
+    val bangle-pair m = ${\embed!(fun ctx -> math-paren ctx bangle-left bangle-right (read-math ctx m))}
 
 
-  let paren-scheme pL pR (h, d) =
-    math-color term-color
-      (math-paren pL pR
-        (text-in-math MathOrd (fun ctx -> (
-          inline-graphics 0pt h d (fun _ -> [])
-        )))
-      )
+    val paren t = Paren(paren-pair, parenL, parenR, t)
 
 
-  let parenL = paren-scheme Math.paren-left Math.empty-paren
-  let parenR = paren-scheme Math.empty-paren Math.paren-right
-  let paren-pair m = ${\paren{#m}}
+    val rec show t =
+      let open Math in
+      match t with
+      | Var(mx) ->
+          mx
 
-  let angleL = paren-scheme (Math.angle-left reset-thickness) Math.empty-paren
-  let angleR = paren-scheme Math.empty-paren (Math.angle-right reset-thickness)
-  let angle-pair m = ${\angle-bracket{#m}}
-
-  let braceL = paren-scheme Math.brace-left Math.empty-paren
-  let braceR = paren-scheme Math.empty-paren Math.brace-right
-  let brace-pair m = ${\brace{#m}}
-
-  let bbraceL = paren-scheme bbrace-left Math.empty-paren
-  let bbraceR = paren-scheme Math.empty-paren bbrace-right
-  let bbrace-pair = math-paren bbrace-left bbrace-right
-
-  let bangleL = paren-scheme bangle-left Math.empty-paren
-  let bangleR = paren-scheme Math.empty-paren bangle-right
-  let bangle-pair = math-paren bangle-left bangle-right
-
-
-  let paren t = Paren(paren-pair, parenL, parenR, t)
-
-
-  let-rec show t =
-    match t with
-    | Var(mx) ->
-        mx
-
-    | Lambda(mopt, mx, _, t0) ->
-         let mlam =
-           match mopt with
-           | None    -> ${\token{\lambda}}
-           | Some(m) -> ${\token{\lambda^{#m}}}
-         in
-        let m0 = show t0 in
-          ${#mlam#mx\token{.}\ #m0}
-
-    | Fix(mf, mx, t0) ->
-        let m0 = show t0 in
-          ${\token{fix}\ #mf\token{.}\ #mx\token{.}\ #m0}
-
-    | App(t1, _, t2) ->
-        let m1 = show-app-left t1 in
-        let m2 = show-app-right t2 in
-          ${#m1\ #m2}
-
-    | LetIn(is-rec, mx, args, _, t1, _, t2opt) ->
-        let mL = if is-rec then ${\token{letrec}} else ${\token{let}} in
-        let ma = join-args args in
-        let m1 = show t1 in
-        let m2 =
-          match t2opt with
-          | None     -> ${}
-          | Some(t2) -> let m2sub = show t2 in ${\ \token{in}\ #m2sub}
-        in
-          ${#mL\ #mx #ma\token{=} #m1#m2}
-
-    | If(t0, _, t1, _, t2) ->
-        let m0 = show t0 in
-        let m1 = show t1 in
-        let m2 = show t2 in
-          ${\token{if}\ #m0\ \token{then}\ #m1\ \token{else}\ #m2}
-
-    | Paren(parenf, _, _, t0) ->
-        let m0 = show t0 in
-          enclose parenf m0
-
-    | Constr(mc, ts) ->
-        let ms = List.map show-app-right ts in
-        let m = Math.join ${\ } ms in
-          ${#mc\ #m}
-
-    | BinOp(mop, t1, t2) ->
-        let m1 = show-app-left t1 in
-        let m2 = show-app-left t2 in
-          ${#m1#mop#m2}
-
-    | Prim(mop, tlst) ->
-        let mlst = tlst |> List.map show in
-        let margs = enclose paren-pair (Math.join ${,} mlst) in
-          ${#mop#margs}
-
-    | Hole ->
-        text-in-math MathOrd (fun ctx -> (
-          let ctx =
-            ctx |> Book.set-latin-font Book.font-latin-mono
-                |> set-text-color term-color
+      | Lambda(mopt, mx, _, t0) ->
+          let mlam =
+            match mopt with
+            | None    -> ${\token{\lambda}}
+            | Some(m) -> ${\token{\lambda^{#m}}}
+            end
           in
-            read-inline ctx {[]}
+          let m0 = show t0 in
+            ${#mlam#mx\token{.}\ #m0}
+
+      | Fix(mf, mx, t0) ->
+          let m0 = show t0 in
+            ${\token{fix}\ #mf\token{.}\ #mx\token{.}\ #m0}
+
+      | App(t1, _, t2) ->
+          let m1 = show-app-left t1 in
+          let m2 = show-app-right t2 in
+            ${#m1\ #m2}
+
+      | LetIn(is-rec, mx, args, _, t1, _, t2opt) ->
+          let mL = if is-rec then ${\token{letrec}} else ${\token{let}} in
+          let ma = join-args args in
+          let m1 = show t1 in
+          let m2 =
+            match t2opt with
+            | None     -> ${}
+            | Some(t2) -> let m2sub = show t2 in ${\ \token{in}\ #m2sub}
+            end
+          in
+            ${#mL\ #mx #ma\token{=} #m1#m2}
+
+      | If(t0, _, t1, _, t2) ->
+          let m0 = show t0 in
+          let m1 = show t1 in
+          let m2 = show t2 in
+            ${\token{if}\ #m0\ \token{then}\ #m1\ \token{else}\ #m2}
+
+      | Paren(parenf, _, _, t0) ->
+          let m0 = show t0 in
+            enclose parenf m0
+
+      | Constr(mc, ts) ->
+          let ms = List.map show-app-right ts in
+          let m = Math.join ${\ } ms in
+            ${#mc\ #m}
+
+      | BinOp(mop, t1, t2) ->
+          let m1 = show-app-left t1 in
+          let m2 = show-app-left t2 in
+            ${#m1#mop#m2}
+
+      | Prim(mop, tlst) ->
+          let mlst = tlst |> List.map show in
+          let margs = enclose paren-pair (Math.join ${,} mlst) in
+            ${#mop#margs}
+
+      | Hole ->
+          let embedded ctx = embed-inline-to-math MathOrd (
+            let ctx =
+              ctx |> Book.set-latin-font Book.font-latin-mono
+                  |> set-text-color term-color
+            in
+              read-inline ctx {[]}
+          ) in
+            ${\embed!(embedded)}
+
+      | Subst(t1, mx, t2) ->
+          let m1 = show t1 in
+          let m2 = show-app-right t2 in
+            ${\subst{#m1}{#mx}{#m2}}
+
+      | SubstHole(mC, t0) ->
+          let m0 = show t0 in
+            ${\subst-hole{#mC}{#m0}}
+      end
+
+
+    and show-app-left t =
+      let m = show t in
+        match t with
+        | Paren(_)     -> m
+        | Var(_)       -> m
+        | App(_)       -> m
+        | Hole         -> m
+        | Subst(_)     -> m
+        | SubstHole(_) -> m
+        | _            -> enclose paren-pair m
+        end
+
+
+    and show-app-right t =
+      let m = show t in
+        match t with
+        | Paren(_)     -> m
+        | Var(_)       -> m
+        | Hole         -> m
+        | Subst(_)     -> m
+        | SubstHole(_) -> m
+        | _            -> enclose paren-pair m
+        end
+
+    type display-elem =
+      | Normal of math-text
+      | Deeper of list display-elem
+
+
+    val rec calc-height-and-depth ctx elst =
+      elst |> List.fold-left (fun (hacc, dacc) e -> (
+        let (h, d) =
+          match e with
+          | Normal(m) ->
+              let (_, h, d) = get-natural-metrics (embed-math ctx (read-math ctx m)) in
+                (h, d)
+
+          | Deeper(elstsub) ->
+              calc-height-and-depth ctx elstsub
+          end
+        in
+          (Pervasives.length-max hacc h, Pervasives.length-max dacc d)
+      )) (0pt, 0pt)
+
+
+    val rec display-aux ctx t =
+      let open Math in
+      let iter = display-aux ctx in
+      match t with
+      | LetIn(is-rec, mx, args, b1, t1, b2, t2opt) ->
+          let mL = if is-rec then ${\token{letrec}} else ${\token{let}} in
+          let ma = join-args args in
+          let elst1 =
+            let elst1 = iter t1 in
+              if b1 then [Deeper(elst1)] else List.append elst1 [Normal(${\ })]
+          in
+          let lst1 = (Normal(${#mL\ #mx#ma\token{=}})) :: elst1 in
+          let lst2 =
+            match t2opt with
+            | None ->
+                []
+
+            | Some(t2) ->
+                let elst2 =
+                  let elst2 = iter t2 in
+                    if b2 then [Deeper(elst2)] else (Normal(${\ })) :: elst2
+                in
+                  (Normal(${\token{in}})) :: elst2
+            end
+          in
+            List.append lst1 lst2
+
+      | If(t0, b1, t1, b2, t2) ->
+  %        let () = display-message (`display if (` ^ (if b1 then `T` else `F`) ^ `/` ^ (if b2 then `T` else `F`) ^ `)` ) in
+          let m0 = show t0 in
+          let e1 =
+            if b1 then Deeper(iter t1) else
+              let m1 = show t1 in Normal(${\ #m1\ })
+          in
+          let e2 =
+            if b2 then Deeper(iter t2) else
+              let m2 = show t2 in Normal(${\ #m2})
+          in
+            [
+              Normal(${\token{if}\ #m0\ \token{then}}),
+              e1,
+              Normal(${\token{else}}),
+              e2,
+            ]
+
+       | Lambda(mopt, mx, b0, t0) ->
+           let mlam =
+             match mopt with
+             | None    -> ${\token{\lambda}}
+             | Some(m) -> ${\token{\lambda^{#m}}}
+             end
+           in
+           let ex = Normal(${#mlam#mx\token{.}\ }) in
+           let elst = iter t0 in
+             if b0 then
+               [ex, Deeper(elst)]
+             else
+               ex :: elst
+
+       | Fix(mf, mx, t0) ->
+           let elst = iter t0 in (Normal(${\token{fix}\ #mf\token{.}\ #mx\token{.}\ })) :: elst
+
+       | Paren(_, parenfL, parenfR, t0) ->
+           display-enclose parenfL parenfR ctx (display-aux ctx t0)
+
+       | App(t1, b, t2) ->
+           let elst1 = display-app-left ctx t1 in
+           let elst2 = display-app-right ctx t2 in
+             if b then
+               List.append elst1 [Deeper(elst2)]
+             else
+               List.concat [
+                 elst1,
+                 [Normal(${\ })],
+                 elst2,
+               ]
+
+       | Constr(m, ts) ->
+           let elstlst = List.map (display-app-right ctx) ts in
+           let elst =
+             elstlst |> List.map (fun elst -> (
+               Normal(${\ }) :: elst
+             )) |> List.concat
+           in
+             Normal(m) :: elst
+
+       | _ -> let m = show t in [Normal(m)]
+       end
+
+
+    and display-enclose parenfL parenfR ctx elst =
+      let vmetr = calc-height-and-depth ctx elst in
+        List.concat [
+          [Normal(parenfL vmetr)],
+          elst,
+          [Normal(parenfR vmetr)],
+        ]
+
+
+    and display-app-left ctx t =
+      let m = display-aux ctx t in
+        match t with
+        | Paren(_)     -> m
+        | Var(_)       -> m
+        | App(_)       -> m
+        | Hole         -> m
+        | Subst(_)     -> m
+        | SubstHole(_) -> m
+        | _            -> display-enclose parenL parenR ctx m
+        end
+
+
+    and display-app-right ctx t =
+      let m = display-aux ctx t in
+        match t with
+        | Paren(_)     -> m
+        | Var(_)       -> m
+        | Hole         -> m
+        | Subst(_)     -> m
+        | SubstHole(_) -> m
+        | _            -> display-enclose parenL parenR ctx m
+        end
+
+
+    val display outmost-indent ctx =
+      let force-break n =
+        discretionary 0 (inline-skip (get-text-width ctx *' 2.)) inline-fil
+          (inline-skip (outmost-indent +' get-font-size ctx *' float n))
+      in
+      let rec iter n lst =
+        match lst with
+        | [] ->
+            inline-nil
+
+        | (Normal(m1)) :: (Normal(m2)) :: tail ->
+            iter n ((Normal(${#m1#m2})) :: tail)
+
+        | (Normal(m)) :: tail ->
+            embed-math ctx (read-math ctx m) ++ iter n tail
+
+        | (Deeper(sub)) :: [] ->
+            force-break (n + 1) ++ (iter (n + 1) sub)
+
+        | (Deeper(sub)) :: tail ->
+            force-break (n + 1) ++ (iter (n + 1) sub) ++ force-break n ++ iter n tail
+        end
+
+      in
+        (fun t -> (
+          let lst = display-aux ctx t in
+            iter 0 lst
         ))
 
-    | Subst(t1, mx, t2) ->
-        let m1 = show t1 in
-        let m2 = show-app-right t2 in
-          ${\subst{#m1}{#mx}{#m2}}
 
-    | SubstHole(mC, t0) ->
-        let m0 = show t0 in
-          ${\subst-hole{#mC}{#m0}}
+    val (+>) m1 m2 = Var(${#m1_#m2})
 
 
-  and show-app-left t =
-    let m = show t in
-      match t with
-      | Paren(_)     -> m
-      | Var(_)       -> m
-      | App(_)       -> m
-      | Hole         -> m
-      | Subst(_)     -> m
-      | SubstHole(_) -> m
-      | _            -> enclose paren-pair m
+    val readI t1 t2 = Constr(${\token{read}^{\token{I}}}, [t1, t2])
+    val readB t1 t2 = Constr(${\token{read}^{\token{B}}}, [t1, t2])
+
+    val textI t = Paren(brace-pair, braceL, braceR, t)
+    val textB t = Paren(angle-pair, angleL, angleR, t)
+    val boxI t = Paren(bbrace-pair, bbraceL, bbraceR, t)
+    val boxB t = Paren(bangle-pair, bangleL, bangleR, t)
+
+    val lamI mx ?(b = bopt) t = Lambda(Some(${\token{I}}), mx, Option.from false bopt, t)
+    val lamB mx ?(b = bopt) t = Lambda(Some(${\token{B}}), mx, Option.from false bopt, t)
+
+    val star t = Var(${\Math.sqbracket!(show t)^{\Math.ast}})
+
+    val cat t1 t2 =
+      let m1 = show t1 in
+      let m2 = show t2 in
+        Var(${#m1 \Math.text!{・} #m2})
 
 
-  and show-app-right t =
-    let m = show t in
-      match t with
-      | Paren(_)     -> m
-      | Var(_)       -> m
-      | Hole         -> m
-      | Subst(_)     -> m
-      | SubstHole(_) -> m
-      | _            -> enclose paren-pair m
+    % ---- metavariables ----
+
+    val tmc = Var(${c})
+    val tme = Var(${e})
+    val tmv = Var(${v})
+    val tmctx = Var(${ctx})
+    val tmchar = Var(${ch})
+    val tmchi = Var(${\Math.chi})
+    val tmit = Var(${it})
+    val tmbt = Var(${bt})
+    val tmib = Var(${ib})
+    val tmbb = Var(${bb})
+    val tmIt = Var(${It})
+    val tmBt = Var(${Bt})
+    val tmIb = Var(${Ib})
+    val tmIbp = Var(${Ib'})
+    val tmBb = Var(${Bb})
+    val tmBbp = Var(${Bb'})
+    val tmesub m = Var(${e_{#m}})
+    val tmvsub m = Var(${v_{#m}})
+    val vx = ${x}
+    val vy = ${y}
+
+  end
 
 
-  type display-elem =
-    | Normal of math
-    | Deeper of display-elem list
+  val math ctx \term t =
+    read-math ctx (Term.show t)
 
 
-  let-rec calc-height-and-depth ctx elst =
-    elst |> List.fold-left (fun (hacc, dacc) e -> (
-      let (h, d) =
-        match e with
-        | Normal(m) ->
-            let (_, h, d) = get-natural-metrics (embed-math ctx m) in
-              (h, d)
-
-        | Deeper(elstsub) ->
-            calc-height-and-depth ctx elstsub
-      in
-        (length-max hacc h, length-max dacc d)
-    )) (0pt, 0pt)
+  val block ctx +display-term t =
+    let ib = Term.display 0pt ctx t in
+      line-break true true ctx (ib ++ inline-fil)
 
 
-  let-rec display-aux ctx t =
-    let iter = display-aux ctx in
-    match t with
-    | LetIn(is-rec, mx, args, b1, t1, b2, t2opt) ->
-        let mL = if is-rec then ${\token{letrec}} else ${\token{let}} in
-        let ma = join-args args in
-        let elst1 =
-          let elst1 = iter t1 in
-            if b1 then [Deeper(elst1)] else List.append elst1 [Normal(${\ })]
+  val inline ctx \display-term t =
+    inline-fil ++ embed-block-breakable ctx (read-block ctx '<+display-term(t);>)
+
+
+  val inline ctx \display-term-list sep tlst =
+    let ibsep = embed-math ctx sep in
+    let (indent, _, _) = get-natural-metrics ibsep in
+      tlst |> List.fold-left-adjacent (fun acc t prevopt _ -> (
+        let () = display-message `\display-term-list` in
+        let (ib, bbback) =
+          match prevopt with
+          | None    -> (Term.display indent ctx t, block-nil)
+          | Some(_) -> (ibsep ++ Term.display indent ctx t, block-skip -1cm)
+          end
         in
-        let lst1 = (Normal(${#mL\ #mx#ma\token{=}})) :: elst1 in
-        let lst2 =
-          match t2opt with
-          | None ->
-              []
-
-          | Some(t2) ->
-              let elst2 =
-                let elst2 = iter t2 in
-                  if b2 then [Deeper(elst2)] else (Normal(${\ })) :: elst2
-              in
-                (Normal(${\token{in}})) :: elst2
-        in
-          List.append lst1 lst2
-
-    | If(t0, b1, t1, b2, t2) ->
-%        let () = display-message (`display if (` ^ (if b1 then `T` else `F`) ^ `/` ^ (if b2 then `T` else `F`) ^ `)` ) in
-        let m0 = show t0 in
-        let e1 =
-          if b1 then Deeper(iter t1) else
-            let m1 = show t1 in Normal(${\ #m1\ })
-        in
-        let e2 =
-          if b2 then Deeper(iter t2) else
-            let m2 = show t2 in Normal(${\ #m2})
-        in
-          [
-            Normal(${\token{if}\ #m0\ \token{then}});
-            e1;
-            Normal(${\token{else}});
-            e2;
-          ]
-
-     | Lambda(mopt, mx, b0, t0) ->
-         let mlam =
-           match mopt with
-           | None    -> ${\token{\lambda}}
-           | Some(m) -> ${\token{\lambda^{#m}}}
-         in
-         let ex = Normal(${#mlam#mx\token{.}\ }) in
-         let elst = iter t0 in
-           if b0 then
-             [ex; Deeper(elst)]
-           else
-             ex :: elst
-
-     | Fix(mf, mx, t0) ->
-         let elst = iter t0 in (Normal(${\token{fix}\ #mf\token{.}\ #mx\token{.}\ })) :: elst
-
-     | Paren(_, parenfL, parenfR, t0) ->
-         display-enclose parenfL parenfR ctx (display-aux ctx t0)
-
-     | App(t1, b, t2) ->
-         let elst1 = display-app-left ctx t1 in
-         let elst2 = display-app-right ctx t2 in
-           if b then
-             List.append elst1 [Deeper(elst2)]
-           else
-             List.concat [
-               elst1;
-               [Normal(${\ })];
-               elst2;
-             ]
-
-     | Constr(m, ts) ->
-         let elstlst = List.map (display-app-right ctx) ts in
-         let elst =
-           elstlst |> List.map (fun elst -> (
-             Normal(${\ }) :: elst
-           )) |> List.concat
-         in
-           Normal(m) :: elst
-
-     | _ -> let m = show t in [Normal(m)]
+          acc ++ inline-fil ++
+            embed-block-breakable ctx (bbback +++ line-break true true ctx (ib ++ inline-fil))
+      )) inline-nil
 
 
-  and display-enclose parenfL parenfR ctx elst =
-    let vmetr = calc-height-and-depth ctx elst in
-      List.concat [
-        [Normal(parenfL vmetr)];
-        elst;
-        [Normal(parenfR vmetr)];
-      ]
+  val block ctx +display-terms tlst =
+    let bblst = tlst |> List.map (fun t -> read-block ctx '<+display-term(t);>) in
+      bblst |> List.fold-left-adjacent (fun bbacc bb opt _ -> (
+        match opt with
+        | None    -> bb
+        | Some(_) -> bbacc +++ block-skip (0pt -' 18pt) +++ bb
+        end
+      )) block-nil
 
 
-  and display-app-left ctx t =
-    let m = display-aux ctx t in
-      match t with
-      | Paren(_)     -> m
-      | Var(_)       -> m
-      | App(_)       -> m
-      | Hole         -> m
-      | Subst(_)     -> m
-      | SubstHole(_) -> m
-      | _            -> display-enclose parenL parenR ctx m
+  val inline ctx \display-terms tlst =
+    inline-fil ++ embed-block-breakable ctx (read-block ctx '<+display-terms(tlst);>)
 
 
-  and display-app-right ctx t =
-    let m = display-aux ctx t in
-      match t with
-      | Paren(_)     -> m
-      | Var(_)       -> m
-      | Hole         -> m
-      | Subst(_)     -> m
-      | SubstHole(_) -> m
-      | _            -> display-enclose parenL parenR ctx m
-
-
-  let display outmost-indent ctx =
-    let force-break n =
-      discretionary 0 (inline-skip (get-text-width ctx *' 2.)) inline-fil
-        (inline-skip (outmost-indent +' get-font-size ctx *' float n))
-    in
-    let-rec iter n lst =
-      match lst with
-      | [] ->
-          inline-nil
-
-      | (Normal(m1)) :: (Normal(m2)) :: tail ->
-          iter n ((Normal(${#m1#m2})) :: tail)
-
-      | (Normal(m)) :: tail ->
-          embed-math ctx m ++ iter n tail
-
-      | (Deeper(sub)) :: [] ->
-          force-break (n + 1) ++ (iter (n + 1) sub)
-
-      | (Deeper(sub)) :: tail ->
-          force-break (n + 1) ++ (iter (n + 1) sub) ++ force-break n ++ iter n tail
-
-    in
-      (fun t -> (
-        let lst = display-aux ctx t in
-          iter 0 lst
-      ))
-
-
-  let (+>) m1 m2 = Var(${#m1_#m2})
-
-
-  let readI t1 t2 = Constr(${\token{read}^{\token{I}}}, [t1; t2])
-  let readB t1 t2 = Constr(${\token{read}^{\token{B}}}, [t1; t2])
-
-  let textI t = Paren(brace-pair, braceL, braceR, t)
-  let textB t = Paren(angle-pair, angleL, angleR, t)
-  let boxI t = Paren(bbrace-pair, bbraceL, bbraceR, t)
-  let boxB t = Paren(bangle-pair, bangleL, bangleR, t)
-
-  let lamI mx ?:bopt t = Lambda(Some(${\token{I}}), mx, Option.from false bopt, t)
-  let lamB mx ?:bopt t = Lambda(Some(${\token{B}}), mx, Option.from false bopt, t)
-
-  let star t = Var(${\sqbracket!(show t)^{\ast}})
-
-  let cat t1 t2 =
-    let m1 = show t1 in
-    let m2 = show t2 in
-      Var(${#m1 \text!{・} #m2})
-
-
-  % ---- metavariables ----
-
-  let tmc = Var(${c})
-  let tme = Var(${e})
-  let tmv = Var(${v})
-  let tmctx = Var(${ctx})
-  let tmchar = Var(${ch})
-  let tmchi = Var(${\chi})
-  let tmit = Var(${it})
-  let tmbt = Var(${bt})
-  let tmib = Var(${ib})
-  let tmbb = Var(${bb})
-  let tmIt = Var(${It})
-  let tmBt = Var(${Bt})
-  let tmIb = Var(${Ib})
-  let tmIbp = Var(${Ib'})
-  let tmBb = Var(${Bb})
-  let tmBbp = Var(${Bb'})
-  let tmesub m = Var(${e_{#m}})
-  let tmvsub m = Var(${v_{#m}})
-  let vx = ${x}
-  let vy = ${y}
-
+  val math ctx \bs t1 t2 = read-math ctx ${\term!(t1) \Math.mathrel{\Math.downarrow} \term!(t2)}
+  val math ctx \bsI tc t1 t2 = read-math ctx ${\term!(tc) \Math.vdash^{\Math.mathbf{I}} \term!(t1) \Math.downarrow \term!(t2)}
+  val math ctx \bsB tc t1 t2 = read-math ctx ${\term!(tc) \Math.vdash^{\Math.mathbf{B}} \term!(t1) \Math.downarrow \term!(t2)}
 end
-
-
-let-math \term t =
-  Term.show t
-
-
-let-block ctx +display-term t =
-  let ib = Term.display 0pt ctx t in
-    line-break true true ctx (ib ++ inline-fil)
-
-
-let-inline ctx \display-term t =
-  inline-fil ++ embed-block-breakable ctx (read-block ctx '<+display-term(t);>)
-
-
-let-inline ctx \display-term-list sep tlst =
-  let ibsep = embed-math ctx sep in
-  let indent = get-natural-width ibsep in
-    tlst |> List.fold-left-adjacent (fun acc t prevopt _ -> (
-      let () = display-message `\display-term-list` in
-      let (ib, bbback) =
-        match prevopt with
-        | None    -> (Term.display indent ctx t, block-nil)
-        | Some(_) -> (ibsep ++ Term.display indent ctx t, block-skip -1cm)
-      in
-        acc ++ inline-fil ++
-          embed-block-breakable ctx (bbback +++ line-break true true ctx (ib ++ inline-fil))
-    )) inline-nil
-
-
-let-block ctx +display-terms tlst =
-  let bblst = tlst |> List.map (fun t -> read-block ctx '<+display-term(t);>) in
-    bblst |> List.fold-left-adjacent (fun bbacc bb opt _ -> (
-      match opt with
-      | None    -> bb
-      | Some(_) -> bbacc +++ block-skip (0pt -' 18pt) +++ bb
-    )) block-nil
-
-
-let-inline ctx \display-terms tlst =
-  inline-fil ++ embed-block-breakable ctx (read-block ctx '<+display-terms(tlst);>)
-
-
-let-math \bs t1 t2 = ${\term!(t1) \mathrel{\downarrow} \term!(t2)}
-let-math \bsI tc t1 t2 = ${\term!(tc) \vdash^{\mathbf{I}} \term!(t1) \downarrow \term!(t2)}
-let-math \bsB tc t1 t2 = ${\term!(tc) \vdash^{\mathbf{B}} \term!(t1) \downarrow \term!(t2)}

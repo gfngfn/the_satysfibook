@@ -1,1224 +1,1254 @@
 % -*- coding: utf-8 -*-
-@require: deco
-@require: code
-@require: color
-@require: itemize
-@require: hdecoset
-@require: table
-@require: bnf
-@require: proof
-@import: term
-@import: book-class
+use package open Stdlib
+use package Code
+use package Itemize
+use package Math
+use package Proof
+use package FontLatinModern
+use open Term of `term`
+use open BookClass of `book-class`
 
 
 % ---- constants ----
 
-let code-background = Gray(0.875)
-let quote-indent-1 = 24pt *' 0.88
-let quote-indent-2 = 12pt
-let val-margin = 12pt
-let val-explain-margin = 6pt
-let desc-indent = 24pt *' 0.88
+module Settings = struct
+  val code-background = Gray(0.875)
+  val quote-indent-1 = 24pt *' 0.88
+  val quote-indent-2 = 12pt
+  val val-margin = 12pt
+  val val-explain-margin = 6pt
+  val desc-indent = 24pt *' 0.88
 
-% ---- ----
-
-
-let-inline ctx \REMAINS msg =
-  let pads = (2pt, 2pt, 2pt, 2pt) in
-  let ctx =
-    ctx |> Book.set-cjk-font Book.font-cjk-gothic
-        |> set-text-color Color.red
-  in
-    inline-frame-inner pads (Deco.simple-frame 1pt Color.red Color.yellow)
-      (read-inline ctx {要加筆： #msg;})
+  % ---- ----
 
 
-let-math \BNFeq = ${\mathrel{: : =}}
-
-
-let-inline ctx \vskip len =
-  inline-fil ++ embed-block-breakable ctx (block-skip len) ++ omit-skip-after
-
-
-let-block ctx +ragged-right it =
-  line-break true true ctx (inline-fil ++ read-inline ctx it)
-
-
-let-inline ctx \new-line =
-  mandatory-break ctx
-
-
-let-math \math-unit it =
-  ${\math-skip!(2pt)\text!(it)}
-
-
-let-inline ctx \quote it =
-  let pads = (quote-indent-1, 0pt, 0pt, 0pt) in
-    inline-fil ++
-      embed-block-breakable ctx
-        (block-frame-breakable ctx pads VDecoSet.empty (fun ctx ->
-          (line-break true true ctx (read-inline ctx it ++ inline-fil))))
-      ++ omit-skip-after
-
-
-let-math \defeq = ${\coloneq}
-
-
-let-math \overwrite mG mx mty =
-   ${#mG \sqbracket{#mx \mapsto #mty}}
-
-
-let-inline ctx \quad =
-  let sz = Book.get-cjk-font-size ctx in
-    inline-skip sz
-
-
-let-inline ctx \size sz it =
-  read-inline (ctx |> set-font-size sz) it
-
-
-let-inline ctx \italic it =
-  read-inline (ctx |> Book.set-latin-font Book.font-latin-italic) it
-
-
-let-inline \dfnje itj ite =
-  {\dfn{#itj;}(\italic{#ite;})}
-
-
-let set-mono-font ctx =
-  ctx |> set-font Latin (`lmmono`, 1., 0.)
-      |> set-hyphen-penalty 100000
-
-
-let-inline ctx \pkg it =
-  read-inline (ctx |> set-mono-font) it
-
-
-let-inline ctx \path it =
-  read-inline (ctx |> set-mono-font) it
-
-
-let strut h d =
-  inline-graphics 0pt h d (fun _ -> [])
-
-
-let-inline ctx \codem it =
-  let ib-strut = strut 8pt 3pt in
-  let ib =
+  val inline ctx \REMAINS msg =
+    let pads = (2pt, 2pt, 2pt, 2pt) in
     let ctx =
-      ctx |> set-mono-font
-          |> set-every-word-break inline-nil ib-strut
+      ctx |> Book.set-cjk-font Book.font-cjk-gothic
+          |> set-text-color Color.red
     in
-      ib-strut ++ read-inline ctx it
-  in
-  let pads = (2pt, 2pt, 2pt, 2pt) in
-  let decoset = HDecoSet.rectangle-round-fill 4pt 2pt code-background in
-    script-guard Latin (inline-frame-breakable pads decoset ib)
+      inline-frame-inner pads (Deco.simple-frame 1pt Color.red Color.yellow)
+        (read-inline ctx {要加筆： #msg;})
 
 
-let-inline ctx \github it =
-  read-inline (ctx |> set-mono-font) it
+  val math ctx \BNFeq = read-math ctx ${\Math.mathrel{: : =}}
 
 
-let-inline ctx \twitter it =
-  read-inline (ctx |> set-mono-font) it
+  val inline ctx \vskip len =
+    inline-fil ++ embed-block-breakable ctx (block-skip len) ++ omit-skip-after
 
 
-let-inline \person-github itn itg =
-  {#itn; (\github{#itg;})}
+  val block ctx +ragged-right it =
+    line-break true true ctx (inline-fil ++ read-inline ctx it)
 
 
-let display-code-decoset =
-  let deco (x, y) w h d =
-    [
-      fill code-background (Gr.rectangle (x, y -' d) (x +' w, y +' h));
-    ]
-  in
-    (deco, deco, deco, deco)
+  val inline ctx \new-line =
+    Pervasives.mandatory-break ctx
 
 
-let display-code-scheme ctx s =
-  Code.scheme display-code-decoset Color.black ctx s
+  val math ctx \math-unit it =
+    read-math ctx ${\Math.math-skip!(2pt)\Math.text!(it)}
 
 
-let-inline ctx \d-code s =
-  let bb =
-    display-code-scheme
-      (ctx |> set-font-size 10pt
-           |> set-leading 13pt) s
-  in
-    inline-fil ++ embed-block-breakable ctx bb
-      ++ omit-skip-after
-
-
-let-inline ctx \d-code-and-block s bt =
-  let pads = (5pt, 5pt, 5pt, 5pt) in
-  let wid = get-text-width ctx in
-  let bb =
-    display-code-scheme ctx s +++ % block-skip -26pt +++
-      block-frame-breakable ctx pads VDecoSet.paper (fun ctx ->
-        read-block ctx bt
-      )
-  in
-    inline-fil ++ embed-block-breakable ctx bb
-      ++ omit-skip-after
-
-
-let-inline ctx \d-codem it =
-  let pads = (5pt, 5pt, 5pt, 5pt) in
-  let bb =
-    block-frame-breakable ctx pads display-code-decoset (fun ctx ->
-      line-break true true ctx
-        (read-inline (ctx |> set-mono-font) it ++ inline-fil)
-    )
-  in
-    inline-fil ++
-      embed-block-breakable ctx bb
+  val inline ctx \quote it =
+    let pads = (quote-indent-1, 0pt, 0pt, 0pt) in
+      inline-fil ++
+        embed-block-breakable ctx
+          (block-frame-breakable ctx pads VDecoSet.empty (fun ctx ->
+            (line-break true true ctx (read-inline ctx it ++ inline-fil))))
         ++ omit-skip-after
 
 
-module BoxGraphics = struct
+  val math ctx \defeq = read-math ctx ${\Math.coloneq}
 
-  let-inline ctx \roman ?:sizeopt its =
-    let size = Option.from 10mm sizeopt in
-    let ctx =
-      ctx |> Book.set-latin-font Book.font-latin-roman
-          |> set-font-size size
+
+  val math ctx \overwrite mG mx mty =
+    read-math ctx ${#mG \Math.sqbracket{#mx \Math.mapsto #mty}}
+
+
+  val inline ctx \quad =
+    let sz = Book.get-cjk-font-size ctx in
+      inline-skip sz
+
+
+  val inline ctx \size sz it =
+    read-inline (ctx |> set-font-size sz) it
+
+
+  val inline ctx \italic it =
+    read-inline (ctx |> Book.set-latin-font Book.font-latin-italic) it
+
+
+  val inline \dfnje itj ite =
+    {\Book.dfn{#itj;}(\italic{#ite;})}
+
+
+  val set-mono-font ctx =
+    ctx |> set-font Latin (FontLatinModern.mono, 1., 0.)
+        |> set-hyphen-penalty 100000
+
+
+  val inline ctx \pkg it =
+    read-inline (ctx |> set-mono-font) it
+
+
+  val inline ctx \path it =
+    read-inline (ctx |> set-mono-font) it
+
+
+  val strut h d =
+    inline-graphics 0pt h d (fun _ -> Gr.empty)
+
+
+  val inline ctx \codem it =
+    let ib-strut = strut 8pt 3pt in
+    let ib =
+      let ctx =
+        ctx |> set-mono-font
+            |> set-every-word-break inline-nil ib-strut
+      in
+        ib-strut ++ read-inline ctx it
     in
-    let pads = (0pt, 0pt, 0pt, 0pt) in
-    let deco (x, y) w h d =
-      let rect = Gr.rectangle (x, y -' d) (x +' w, y +' h) in
-      [
-        fill (Gray(0.875)) rect;
-        stroke 0.5pt Color.black rect;
-      ]
-    in
-      its |> List.map (fun it ->
-        inline-frame-inner pads deco (read-inline ctx it)
-      ) |> List.fold-left (++) inline-nil
-
-
-  let-inline ctx \space len =
-    let r = len /' 10mm in
-    let pads = (0pt, 0pt, 0pt, 0pt) in
-    let deco (x, y) w h d =
-      let rect = Gr.rectangle (x, y -' d) (x +' w, y +' h) in
-      [
-        fill (Gray(0.5)) rect;
-        stroke 0.5pt Color.black rect;
-      ]
-    in
-    let w = 0.4cm *' r in
-    let h = 0.5cm *' r in
-    let d = 0cm in
-      inline-frame-inner pads deco
-        (inline-graphics w h d (fun (x, y) -> []))
-
-
-  let-inline ctx \text m it =
-    let ctx =
-      ctx |> set-mono-font
-          |> set-font-size 5mm
-    in
-    let shift = 0.5cm in
-    let down0 = 0.5cm in
-    let down1 = 0.75cm in
-    let down2 = 1cm in
-    let pads = (0pt, 0pt, 0pt, 0pt) in
-    let deco (x, y) w h d =
-      List.concat [
-        [
-          stroke 1pt Color.black (Gr.line (x, y -' down2) (x, y +' h));
-          Gr.text-leftward (x -' shift, y -' down1) (embed-math ctx m);
-        ];
-        Gr.arrow 0.5pt Color.black 6pt 5pt 1.5pt (x -' shift, y -' down0) (x, y -' down0);
-      ]
-    in
-      inline-frame-inner pads deco (read-inline ctx it)
-        ++ inline-graphics 0pt 0pt down2 (fun _ -> [])
-
-
-  let-inline ctx \glue =
-    let h = 0.5cm in
-    let d = 0cm in
-      (inline-graphics-outer h d (fun w (x, y) -> (
-        let rect = Gr.rectangle (x, y -' d) (x +' w, y +' h) in
-        [
-          fill (Gray(0.5)) rect;
-          stroke 0.5pt Color.black rect;
-        ]
-      )))
-
-
-  let-inline ctx \line it =
-    let pads = (0pt, 0pt, 0pt, 0pt) in
-    let deco (x, y) w h d =
-      let rect = Gr.rectangle (x, y -' d) (x +' w, y +' h) in
-      [
-        fill (Gray(0.75)) rect;
-        stroke 0.5pt Color.black rect;
-      ]
-    in
-      inline-frame-outer pads deco (read-inline ctx it)
-
-
-  let-inline ctx \justify wid its =
-    let pads = (0pt, 0pt, 0pt, 0pt) in
-    let l = 0.5cm in
-    let deco (x, y) w h d =
-      [
-        stroke 1pt Color.black (Gr.line (x     , y -' d -' l) (x     , y +' h +' l));
-        stroke 1pt Color.black (Gr.line (x +' w, y -' d -' l) (x +' w, y +' h +' l));
-      ]
-    in
-    let decoset = (deco, deco, deco, deco) in
-      embed-block-top ctx wid (fun ctx ->
-        block-frame-breakable ctx pads decoset (fun ctx ->
-          its |> List.map (fun it ->
-            line-break false false ctx (read-inline ctx it)
-          ) |> List.fold-left (+++) block-nil
-        )
-      )
-
-end
-
-
-let make-graphics ctx grf =
-  grf (|
-    text-centering = (fun pt it ->
-      Gr.text-centering pt (read-inline ctx it));
-    text-rightward = (fun pt it ->
-      Gr.text-rightward pt (read-inline ctx it));
-    text-leftward = (fun pt it ->
-      Gr.text-leftward pt (read-inline ctx it));
-  |)
-
-
-let-block ctx +centered-graphics w h grf =
-  let ib-gr =
-    inline-graphics w h 0pt (fun pt ->
-      List.map (shift-graphics pt) (make-graphics ctx grf)
-    )
-  in
-  line-break true true (ctx |> set-paragraph-margin 0pt 0pt)
-    (inline-fil ++ ib-gr ++ inline-fil)
-
-
-type geometry =
-  | Rectangle of (length * length) * (length * length)
-  | Circle    of (length * length) * length
-
-
-type 'a bin-tree =
-  | BTEmpty
-  | BTNode of 'a * 'a bin-tree * 'a bin-tree
-
-
-module Sample = struct
-
-  let-math \opcls m1 m2 =
-    math-paren Math.paren-left Math.sqbracket-right ${#m1, #m2}
-
-
-  let-inline ctx \enlarge it =
-    let size = get-font-size ctx in
-    let ctx-enlarge = set-font-size (size *' 1.5) ctx in
-      read-inline ctx-enlarge it
-
-
-  let-inline ctx \q inner =
-    let ib-after = read-inline ctx {«\ } in
-    let ctxq =
-      ctx |> set-every-word-break inline-nil ib-after
-    in
-    read-inline ctxq {« #inner; »}
-
-
-  let-block ctx +p-alph it =
-    line-break true true ctx
-      (inline-skip 15mm ++ read-inline ctx it ++ inline-fil)
-
-
-  let-inline ctx \area it =
-    let ib = read-inline ctx it in
-    let (w, h, d) = get-natural-metrics ib in
-    let thickness = 0.5pt in
-    let color = Color.black in
-      inline-graphics w h d (fun (x, y) ->
-        [
-          stroke thickness color
-            (start-path (x, y -' d)
-              |> line-to (x +' w, y -' d)
-              |> line-to (x +' w, y +' h)
-              |> line-to (x, y +' h)
-              |> close-with-line);
-
-          stroke thickness color
-            (start-path (x, y -' d)
-              |> line-to (x +' w, y +' h)
-              |> terminate-path);
-
-          stroke thickness color
-            (start-path (x, y +' h)
-              |> line-to (x +' w, y -' d)
-              |> terminate-path);
-        ]
-      )
-
-
-  let-inline \show-int n = embed-string (arabic n)
-  let-inline \show-float x = embed-string (show-float x)
-  let-inline \show-string s = embed-string s
-
-
-  let to-dollar m-yen =
-    let rate = 112.73 in
-      (float (m-yen)) /. rate
-
-
-  let to-dollar-2 rate m-yen =
-    (float m-yen) /. rate
-
-
-  let abs n =
-    if n < 0 then - n else n
-
-
-  let pi = 3.1415926535
-
-
-  let length-abs len =
-    if len <' 0pt then 0pt -' len else len
-
-
-  let area geom =
-    match geom with
-    | Rectangle((x1, y1), (x2, y2)) ->
-        let w = (length-abs (x1 -' x2) /' 1cm) in
-        let h = (length-abs (y1 -' y2) /' 1cm) in
-          w *. h
-
-    | Circle(_, r) ->
-        let rf = r /' 1cm in
-          rf *. rf *. pi
-
-
-  let-rec fact n =
-    if n <= 0 then 1 else
-      n * fact (n - 1)
-
-
-  let-rec show-bin-tree pr tr =
-    match tr with
-    | BTEmpty ->
-        `_`
-
-    | BTNode(x, trL, trR) ->
-        `(` ^ (pr x) ^ #` `# ^
-          (show-bin-tree pr trL) ^ #` `# ^
-          (show-bin-tree pr trR) ^ `)`
-
-
-  let-inline ctx \simple-frame it =
     let pads = (2pt, 2pt, 2pt, 2pt) in
-    let decoset = HDecoSet.simple-frame-stroke 1pt (Gray(0.5)) in
-      inline-frame-breakable pads decoset (read-inline ctx it)
+    let decoset = HDecoSet.rectangle-round-fill 4pt 2pt code-background in
+      script-guard Latin (inline-frame-breakable pads decoset ib)
 
 
-  let-math \lim =
-    let m-lim = math-char MathOp `lim` in
-      math-pull-in-scripts MathOp MathOp (fun moptS moptT -> (
-        match (moptS, moptT) with
-        | (None    , None    ) -> m-lim
-        | (Some(mS), None    ) -> math-lower m-lim mS
-        | (None    , Some(mT)) -> math-upper m-lim mT
-        | (Some(mS), Some(mT)) -> math-upper (math-lower m-lim mS) mT
-      ))
-
-end
+  val inline ctx \github it =
+    read-inline (ctx |> set-mono-font) it
 
 
-let record-paren-left hgt dpt hgtaxis fontsize color =
-  let halflen = Math.half-length hgt dpt hgtaxis fontsize in
-  let w0 = fontsize *' 0.1 in
-  let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
-  let w2 = halflen *' 0.25 in %temporary
-  let w-extra = fontsize *' 0.25 in
-  let t1 = fontsize *' 0.05 in
-  let t2 = fontsize *' 0.05 in
-  let t3 = fontsize *' 0.0125 in
+  val inline ctx \twitter it =
+    read-inline (ctx |> set-mono-font) it
 
-  let qA = halflen *' 0.35 in
-  let p1 = (w1 +' w2) *' 0.75 in
-  let q1 = halflen *' 0.3 in
 
-  let qB = halflen *' 0.45 in
-  let p2 = w2 *' 0.5 in
-  let q2 = halflen *' 0.2 in
+  val inline \person-github itn itg =
+    {#itn; (\github{#itg;})}
 
-  let path (xpos, ypos) =
-    let yC = ypos +' hgtaxis in
-    let yU = yC +' halflen in
-    let yL = yC -' halflen in
-    let x0 = xpos +' w0 in
-    let x1 = x0 +' w1 in
-    let x2 = x1 +' w2 in
-    let outer =
-      start-path (x2, yU)
-        |> bezier-to (x2 -' p1, yU -' q1) (x0, yC +' qA) (x0, yC)
-        |> bezier-to (x0, yC -' qA) (x2 -' p1, yL +' q1) (x2, yL)
-        |> line-to (x2 +' t1, yL -' t3)
-        |> line-to (x2 +' t1, yU +' t3)
-        |> close-with-line
+
+  val display-code-decoset =
+    let deco (x, y) w h d =
+      fill code-background (Gr.rectangle (x, y -' d) (x +' w, y +' h))
     in
-    let inner =
-      start-path (x2, yL +' t2)
-      |> bezier-to (x2 -' p2, yL +' q2) (x1, yC -' qB) (x1, yC)
-      |> bezier-to (x1, yC +' qB) (x2 -' p2, yU -' q2) (x2, yU -' t2)
-      |> close-with-line
+      (deco, deco, deco, deco)
+
+
+  val display-code-scheme ctx s =
+    Code.scheme display-code-decoset ctx s
+
+
+  val inline ctx \d-code s =
+    let bb =
+      display-code-scheme
+        (ctx |> set-font-size 10pt
+             |> set-leading 13pt) s
     in
-      unite-path outer inner
-  in
-  let graphics point = [ fill color (path point); ] in
-  let kerninfo _ = 0pt in
-    (inline-graphics (w0 +' w1 +' w2 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+      inline-fil ++ embed-block-breakable ctx bb
+        ++ omit-skip-after
 
 
-let record-paren-right hgt dpt hgtaxis fontsize color =
-  let halflen = Math.half-length hgt dpt hgtaxis fontsize in
-  let w0 = fontsize *' 0.1 in
-  let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
-  let w2 = halflen *' 0.25 in %temporary
-  let w-extra = fontsize *' 0.25 in
-  let t1 = fontsize *' 0.05 in
-  let t2 = fontsize *' 0.05 in
-  let t3 = fontsize *' 0.0125 in
-
-  let qA = halflen *' 0.35 in
-  let p1 = (w1 +' w2) *' 0.75 in
-  let q1 = halflen *' 0.3 in
-
-  let qB = halflen *' 0.45 in
-  let p2 = w2 *' 0.5 in
-  let q2 = halflen *' 0.2 in
-
-  let wid = w0 +' w1 +' w2 +' w-extra in
-
-  let path (xpos, ypos) =
-    let yC = ypos +' hgtaxis in
-    let yU = yC +' halflen in
-    let yL = yC -' halflen in
-    let x0 = xpos +' wid -' w0 in
-    let x1 = x0 -' w1 in
-    let x2 = x1 -' w2 in
-    let outer =
-      start-path (x2, yU)
-        |> bezier-to (x2 +' p1, yU -' q1) (x0, yC +' qA) (x0, yC)
-        |> bezier-to (x0, yC -' qA) (x2 +' p1, yL +' q1) (x2, yL)
-        |> line-to (x2 -' t1, yL -' t3)
-        |> line-to (x2 -' t1, yU +' t3)
-        |> close-with-line
+  val inline ctx \d-code-and-block s bt =
+    let pads = (5pt, 5pt, 5pt, 5pt) in
+    let wid = get-text-width ctx in
+    let bb =
+      display-code-scheme ctx s +++ % block-skip -26pt +++
+        block-frame-breakable ctx pads VDecoSet.paper (fun ctx ->
+          read-block ctx bt
+        )
     in
-    let inner =
-      start-path (x2, yL +' t2)
-      |> bezier-to (x2 +' p2, yL +' q2) (x1, yC -' qB) (x1, yC)
-      |> bezier-to (x1, yC +' qB) (x2 +' p2, yU -' q2) (x2, yU -' t2)
-      |> close-with-line
+      inline-fil ++ embed-block-breakable ctx bb
+        ++ omit-skip-after
+
+
+  val inline ctx \d-codem it =
+    let pads = (5pt, 5pt, 5pt, 5pt) in
+    let bb =
+      block-frame-breakable ctx pads display-code-decoset (fun ctx ->
+        line-break true true ctx
+          (read-inline (ctx |> set-mono-font) it ++ inline-fil)
+      )
     in
-      unite-path outer inner
-  in
-  let graphics point = [ fill color (path point); ] in
-  let kerninfo _ = 0pt in
-    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+      inline-fil ++
+        embed-block-breakable ctx bb
+          ++ omit-skip-after
 
 
-module Type : sig
+  module BoxGraphics = struct
 
-  type t
-  val to-math : bool -> t -> math
-  val show : t -> math
-  val of-math : math -> t
-  val (-->) : t -> t -> t
-  val base-type : inline-text -> t
-  val ctr-type : inline-text -> t list -> t
-  val product : t list -> t
-  val record : (inline-text * t) list -> t
-  val cmdI : t list -> t
-  val cmdB : t list -> t
-  val cmdM : t list -> t
-  val forall : math -> t -> t
-  val forall-kinded : math -> (inline-text * t) list -> t -> t
-  val star : t -> t
-
-  val synt-paren : t -> t
-
-  val unit : t
-  val bool : t
-  val int : t
-  val float : t
-  val length : t
-  val string : t
-  val context : t
-  val inline-text : t
-  val inline-boxes : t
-  val block-text : t
-  val block-boxes : t
-  val pre-path : t
-  val path : t
-  val point : t
-  val graphics : t
-  val color : t
-  val deco : t
-  val deco-set : t
-  val paren : t
-  val script : t
-  val image : t
-  val paddings : t
-  val cell : t
-  val page : t
-  val document : t
-  val math : t
-  val itemize : t
-  val math-class : t
-  val math-char-class : t
-
-  val list : t -> t
-  val option : t -> t
-  val ref : t -> t
-
-  % ---- metavariables --
-
-  val tymb : t
-  val tymalpha : t
-  val tymbeta : t
-  val tymsigma : t
-  val tymtau : t
-  val tymtaup : t
-  val tymtausub : math -> t
-
-  val \record-paren : [math] math-cmd
-
-end = struct
-
-  type t =
-    | Ctr    of inline-text * t list
-    | Func   of t * t
-    | Prod   of t list
-    | Cmd    of inline-text * t list
-    | Forall of math * ((inline-text * t) list) option * t
-    | Record of (inline-text * t) list
-    | Paren  of t
+    val inline ctx \roman ?(size = sizeopt) its =
+      let size = Option.from 10mm sizeopt in
+      let ctx =
+        ctx |> Book.set-latin-font Book.font-latin-roman
+            |> set-font-size size
+      in
+      let pads = (0pt, 0pt, 0pt, 0pt) in
+      let deco (x, y) w h d =
+        let rect = Gr.rectangle (x, y -' d) (x +' w, y +' h) in
+        unite-graphics [
+          fill (Gray(0.875)) rect,
+          stroke 0.5pt Color.black rect,
+        ]
+      in
+        its |> List.map (fun it ->
+          inline-frame-inner pads deco (read-inline ctx it)
+        ) |> List.fold-left (++) inline-nil
 
 
-  type paren-mode =
-    | Normal
-    | Domain
-    | Single
+    val inline ctx \space len =
+      let r = len /' 10mm in
+      let pads = (0pt, 0pt, 0pt, 0pt) in
+      let deco (x, y) w h d =
+        let rect = Gr.rectangle (x, y -' d) (x +' w, y +' h) in
+        unite-graphics [
+          fill (Gray(0.5)) rect,
+          stroke 0.5pt Color.black rect,
+        ]
+      in
+      let w = 0.4cm *' r in
+      let h = 0.5cm *' r in
+      let d = 0cm in
+        inline-frame-inner pads deco
+          (inline-graphics w h d (fun (x, y) -> Gr.empty))
 
 
-  let-math \arr-display =
-    let mbr =
-      text-in-math MathOrd (fun ctx ->
-        discretionary 100 inline-nil inline-fil inline-nil)
+    val inline ctx \text m it =
+      let ctx =
+        ctx |> set-mono-font
+            |> set-font-size 5mm
+      in
+      let shift = 0.5cm in
+      let down0 = 0.5cm in
+      let down1 = 0.75cm in
+      let down2 = 1cm in
+      let pads = (0pt, 0pt, 0pt, 0pt) in
+      let deco (x, y) w h d =
+        unite-graphics [
+          stroke 1pt Color.black (Gr.line (x, y -' down2) (x, y +' h)),
+          Gr.text-leftward (x -' shift, y -' down1) (embed-math ctx (read-math ctx m)),
+          Gr.arrow 0.5pt Color.black 6pt 5pt 1.5pt (x -' shift, y -' down0) (x, y -' down0),
+        ]
+      in
+        inline-frame-inner pads deco (read-inline ctx it)
+          ++ inline-graphics 0pt 0pt down2 (fun _ -> Gr.empty)
+
+
+    val inline ctx \glue =
+      let h = 0.5cm in
+      let d = 0cm in
+        (inline-graphics-outer h d (fun w (x, y) -> (
+          let rect = Gr.rectangle (x, y -' d) (x +' w, y +' h) in
+          unite-graphics [
+            fill (Gray(0.5)) rect,
+            stroke 0.5pt Color.black rect,
+          ]
+        )))
+
+
+    val inline ctx \line it =
+      let pads = (0pt, 0pt, 0pt, 0pt) in
+      let deco (x, y) w h d =
+        let rect = Gr.rectangle (x, y -' d) (x +' w, y +' h) in
+        unite-graphics [
+          fill (Gray(0.75)) rect,
+          stroke 0.5pt Color.black rect,
+        ]
+      in
+        inline-frame-outer pads deco (read-inline ctx it)
+
+
+    val inline ctx \justify wid its =
+      let pads = (0pt, 0pt, 0pt, 0pt) in
+      let l = 0.5cm in
+      let deco (x, y) w h d =
+        unite-graphics [
+          stroke 1pt Color.black (Gr.line (x     , y -' d -' l) (x     , y +' h +' l)),
+          stroke 1pt Color.black (Gr.line (x +' w, y -' d -' l) (x +' w, y +' h +' l)),
+        ]
+      in
+      let decoset = (deco, deco, deco, deco) in
+        embed-block-top ctx wid (fun ctx ->
+          block-frame-breakable ctx pads decoset (fun ctx ->
+            its |> List.map (fun it ->
+              line-break false false ctx (read-inline ctx it)
+            ) |> List.fold-left (+++) block-nil
+          )
+        )
+
+  end
+
+
+  val make-graphics ctx grf =
+    grf (|
+      text-centering = (fun pt it ->
+        Gr.text-centering pt (read-inline ctx it)),
+      text-rightward = (fun pt it ->
+        Gr.text-rightward pt (read-inline ctx it)),
+      text-leftward = (fun pt it ->
+        Gr.text-leftward pt (read-inline ctx it)),
+    |)
+
+
+  val block ctx +centered-graphics w h grf =
+    let ib-gr =
+      inline-graphics w h 0pt (fun pt ->
+        shift-graphics pt (make-graphics ctx grf)
+      )
     in
-      math-group MathBin MathBin (math-concat (math-char MathOrd `→`) mbr)
+    line-break true true (ctx |> set-paragraph-margin 0pt 0pt)
+      (inline-fil ++ ib-gr ++ inline-fil)
 
 
-  let-math \arr-inline =
-    let mbr =
-      text-in-math MathOrd (fun ctx -> (
-        let ib-space =
-          Option.from inline-nil
-            (space-between-maths ctx
-              (math-char MathOrd ` `) (math-char MathBin ` `))
-        in
-        discretionary 100 ib-space inline-nil inline-nil
-      ))
-    in
-      math-group MathBin MathOrd (math-concat (math-char MathOrd `→`) mbr)
+  type geometry =
+    | Rectangle of (length * length) * (length * length)
+    | Circle    of (length * length) * length
 
 
-  let-math \record-paren =
-    math-paren record-paren-left record-paren-right
+  type  bin-tree 'a =
+    | BTEmpty
+    | BTNode of 'a * bin-tree 'a * bin-tree 'a
 
 
-  let sep-record-glue =
-    text-in-math MathOrd (fun ctx -> (
+  module Sample = struct
+
+    val math ctx \opcls m1 m2 =
+      math-paren ctx Math.paren-left Math.sqbracket-right (read-math ctx ${#m1, #m2})
+
+
+    val inline ctx \enlarge it =
       let size = get-font-size ctx in
-      discretionary 100 (inline-glue (size *' 0.5) 2pt 3pt) inline-fil (inline-skip size)
-    ))
+      let ctx-enlarge = set-font-size (size *' 1.5) ctx in
+        read-inline ctx-enlarge it
 
 
-  let synt-paren ty = Paren(ty)
+    val inline ctx \q inner =
+      let ib-after = read-inline ctx {«\ } in
+      let ctxq =
+        ctx |> set-every-word-break inline-nil ib-after
+      in
+      read-inline ctxq {« #inner; »}
 
 
-  let to-math is-inline =
-    let-rec aux
-      | mode (Ctr(it, tyargs)) =
-          let marg =
-            tyargs |> List.map (fun ty -> (
-              let m = aux Single ty in
-              ${#m\ }
-            )) |> List.fold-left math-concat ${}
+    val block ctx +p-alph it =
+      line-break true true ctx
+        (inline-skip 15mm ++ read-inline ctx it ++ inline-fil)
+
+
+    val inline ctx \area it =
+      let ib = read-inline ctx it in
+      let (w, h, d) = get-natural-metrics ib in
+      let thickness = 0.5pt in
+      let color = Color.black in
+        inline-graphics w h d (fun (x, y) ->
+          unite-graphics [
+            stroke thickness color
+              (start-path (x, y -' d)
+                |> line-to (x +' w, y -' d)
+                |> line-to (x +' w, y +' h)
+                |> line-to (x, y +' h)
+                |> close-with-line),
+
+            stroke thickness color
+              (start-path (x, y -' d)
+                |> line-to (x +' w, y +' h)
+                |> terminate-path),
+
+            stroke thickness color
+              (start-path (x, y +' h)
+                |> line-to (x +' w, y -' d)
+                |> terminate-path),
+          ]
+        )
+
+
+    val inline \show-int n = embed-string (arabic n)
+    val inline \show-float x = embed-string (show-float x)
+    val inline \show-string s = embed-string s
+
+
+    val to-dollar m-yen =
+      let rate = 112.73 in
+        (float (m-yen)) /. rate
+
+
+    val to-dollar-2 rate m-yen =
+      (float m-yen) /. rate
+
+
+    val abs n =
+      if n < 0 then - n else n
+
+
+    val pi = 3.1415926535
+
+
+    val length-abs len =
+      if len <' 0pt then 0pt -' len else len
+
+
+    val area geom =
+      match geom with
+      | Rectangle((x1, y1), (x2, y2)) ->
+          let w = (length-abs (x1 -' x2) /' 1cm) in
+          let h = (length-abs (y1 -' y2) /' 1cm) in
+            w *. h
+
+      | Circle(_, r) ->
+          let rf = r /' 1cm in
+            rf *. rf *. pi
+      end
+
+
+    val rec fact n =
+      if n <= 0 then 1 else
+        n * fact (n - 1)
+
+
+    val rec show-bin-tree pr tr =
+      match tr with
+      | BTEmpty ->
+          `_`
+
+      | BTNode(x, trL, trR) ->
+          `(` ^ (pr x) ^ #` `# ^
+            (show-bin-tree pr trL) ^ #` `# ^
+            (show-bin-tree pr trR) ^ `)`
+      end
+
+
+    val inline ctx \simple-frame it =
+      let pads = (2pt, 2pt, 2pt, 2pt) in
+      let decoset = HDecoSet.simple-frame-stroke 1pt (Gray(0.5)) in
+        inline-frame-breakable pads decoset (read-inline ctx it)
+
+
+    val math ctx \lim with sub sup =
+      let m-lim = math-char ctx MathOp `lim` in
+      let m =
+        match sub with
+        | None     -> m-lim
+        | Some(mS) -> math-lower ctx m-lim (fun ctx -> read-math ctx mS)
+        end
+      in
+      match sup with
+      | None     -> m
+      | Some(mT) -> math-upper ctx m (fun ctx -> read-math ctx mT)
+      end
+
+  end
+
+  % duplicate (term.satyh)
+  val extract-spec-from-context ctx =
+    let fontsize = get-font-size ctx in
+    let hgtaxis = fontsize *' get-math-axis-height-ratio ctx in
+    let color = get-text-color ctx in
+    (fontsize, hgtaxis, color)
+
+  val record-paren-left hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+
+    let halflen = Math.half-length hgt dpt hgtaxis fontsize in
+    let w0 = fontsize *' 0.1 in
+    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+    let w2 = halflen *' 0.25 in %temporary
+    let w-extra = fontsize *' 0.25 in
+    let t1 = fontsize *' 0.05 in
+    let t2 = fontsize *' 0.05 in
+    let t3 = fontsize *' 0.0125 in
+
+    let qA = halflen *' 0.35 in
+    let p1 = (w1 +' w2) *' 0.75 in
+    let q1 = halflen *' 0.3 in
+
+    let qB = halflen *' 0.45 in
+    let p2 = w2 *' 0.5 in
+    let q2 = halflen *' 0.2 in
+
+    let path (xpos, ypos) =
+      let yC = ypos +' hgtaxis in
+      let yU = yC +' halflen in
+      let yL = yC -' halflen in
+      let x0 = xpos +' w0 in
+      let x1 = x0 +' w1 in
+      let x2 = x1 +' w2 in
+      let outer =
+        start-path (x2, yU)
+          |> bezier-to (x2 -' p1, yU -' q1) (x0, yC +' qA) (x0, yC)
+          |> bezier-to (x0, yC -' qA) (x2 -' p1, yL +' q1) (x2, yL)
+          |> line-to (x2 +' t1, yL -' t3)
+          |> line-to (x2 +' t1, yU +' t3)
+          |> close-with-line
+      in
+      let inner =
+        start-path (x2, yL +' t2)
+        |> bezier-to (x2 -' p2, yL +' q2) (x1, yC -' qB) (x1, yC)
+        |> bezier-to (x1, yC +' qB) (x2 -' p2, yU -' q2) (x2, yU -' t2)
+        |> close-with-line
+      in
+        unite-path outer inner
+    in
+    let graphics point = fill color (path point) in
+    let kerninfo _ = 0pt in
+      (inline-graphics (w0 +' w1 +' w2 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  val record-paren-right hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
+
+    let halflen = Math.half-length hgt dpt hgtaxis fontsize in
+    let w0 = fontsize *' 0.1 in
+    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+    let w2 = halflen *' 0.25 in %temporary
+    let w-extra = fontsize *' 0.25 in
+    let t1 = fontsize *' 0.05 in
+    let t2 = fontsize *' 0.05 in
+    let t3 = fontsize *' 0.0125 in
+
+    let qA = halflen *' 0.35 in
+    let p1 = (w1 +' w2) *' 0.75 in
+    let q1 = halflen *' 0.3 in
+
+    let qB = halflen *' 0.45 in
+    let p2 = w2 *' 0.5 in
+    let q2 = halflen *' 0.2 in
+
+    let wid = w0 +' w1 +' w2 +' w-extra in
+
+    let path (xpos, ypos) =
+      let yC = ypos +' hgtaxis in
+      let yU = yC +' halflen in
+      let yL = yC -' halflen in
+      let x0 = xpos +' wid -' w0 in
+      let x1 = x0 -' w1 in
+      let x2 = x1 -' w2 in
+      let outer =
+        start-path (x2, yU)
+          |> bezier-to (x2 +' p1, yU -' q1) (x0, yC +' qA) (x0, yC)
+          |> bezier-to (x0, yC -' qA) (x2 +' p1, yL +' q1) (x2, yL)
+          |> line-to (x2 -' t1, yL -' t3)
+          |> line-to (x2 -' t1, yU +' t3)
+          |> close-with-line
+      in
+      let inner =
+        start-path (x2, yL +' t2)
+        |> bezier-to (x2 +' p2, yL +' q2) (x1, yC -' qB) (x1, yC)
+        |> bezier-to (x1, yC +' qB) (x2 +' p2, yU -' q2) (x2, yU -' t2)
+        |> close-with-line
+      in
+        unite-path outer inner
+    in
+    let graphics point = fill color (path point) in
+    let kerninfo _ = 0pt in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  module Type :> sig
+
+    type t :: o
+    val to-math : bool -> t -> math-text
+    val show : t -> math-text
+    val of-math : math-text -> t
+    val (-->) : t -> t -> t
+    val base-type : inline-text -> t
+    val ctr-type : inline-text -> list t -> t
+    val product : list t -> t
+    val record : list (inline-text * t)  -> t
+    val cmdI : list t -> t
+    val cmdB : list t -> t
+    val cmdM : list t -> t
+    val forall : math-text -> t -> t
+    val forall-kinded : math-text -> list (inline-text * t) -> t -> t
+    val star : t -> t
+
+    val synt-paren : t -> t
+
+    val unit : t
+    val bool : t
+    val int : t
+    val float : t
+    val length : t
+    val string : t
+    val context : t
+    val inline-text : t
+    val inline-boxes : t
+    val block-text : t
+    val block-boxes : t
+    val pre-path : t
+    val path : t
+    val point : t
+    val graphics : t
+    val color : t
+    val deco : t
+    val deco-set : t
+    val paren : t
+    val script : t
+    val image : t
+    val paddings : t
+    val cell : t
+    val page : t
+    val document : t
+    val math-text : t
+    val itemize : t
+    val math-class : t
+    val math-char-class : t
+
+    val list : t -> t
+    val option : t -> t
+    val ref : t -> t
+
+    % ---- metavariables --
+
+    val tymb : t
+    val tymalpha : t
+    val tymbeta : t
+    val tymsigma : t
+    val tymtau : t
+    val tymtaup : t
+    val tymtausub : math-text -> t
+
+    val \record-paren : math [math-text]
+
+  end = struct
+
+    type t =
+      | Ctr    of inline-text * list t
+      | Func   of t * t
+      | Prod   of list t
+      | Cmd    of inline-text * list t
+      | Forall of math-text * option (list (inline-text * t)) * t
+      | Record of list (inline-text * t)
+      | Paren  of t
+
+
+    type paren-mode =
+      | Normal
+      | Domain
+      | Single
+
+    % duplicate
+    val math ctx \embed m = m ctx
+
+    val math ctx \arr-display =
+      let mbr =
+        embed-inline-to-math MathOrd (discretionary 100 inline-nil inline-fil inline-nil)
+      in
+        math-group MathBin MathBin (math-concat (math-char ctx MathOrd `→`) mbr)
+
+
+    val math ctx \arr-inline =
+      let mbr =
+        embed-inline-to-math MathOrd (
+          let ib-space =
+            Option.from inline-nil
+              (space-between-maths ctx
+                (math-char ctx MathOrd ` `) (math-char ctx MathBin ` `))
           in
-          let mctr =
-            text-in-math MathOrd
-              (fun ctx -> read-inline ctx {\no-break{#it;}})
-          in
-          let m = ${#marg#mctr} in
-          ( match (mode, tyargs) with
+          discretionary 100 ib-space inline-nil inline-nil
+        )
+      in
+        math-group MathBin MathOrd (math-concat (math-char ctx MathOrd `→`) mbr)
+
+
+    val math ctx \record-paren m =
+      math-paren ctx record-paren-left record-paren-right (read-math ctx m)
+
+
+    val sep-record-glue =
+      ${\embed!(fun ctx ->
+        embed-inline-to-math MathOrd (
+          let size = get-font-size ctx in
+          discretionary 100 (inline-glue (size *' 0.5) 2pt 3pt) inline-fil (inline-skip size)
+        )
+      )}
+
+
+    val synt-paren ty = Paren(ty)
+
+
+    val to-math is-inline =
+      let open Math in
+      let rec aux mode typ = match typ with
+        | Ctr(it, tyargs) ->
+            let marg =
+              tyargs |> List.map (fun ty -> (
+                let m = aux Single ty in
+                ${#m\ }
+              )) |> List.fold-left (fun m1 m2 -> ${#m1#m2}) ${}
+            in
+            let mctr =
+              ${\embed!(fun ctx ->
+                embed-inline-to-math MathOrd
+                  (read-inline ctx {\Pervasives.no-break{#it;}})
+              )}
+            in
+            let m = ${#marg#mctr} in
+            match (mode, tyargs) with
             | (Single, _ :: _) -> ${\paren{#m}}
             | _                -> m
-          )
+            end
 
-      | mode (Func(ty1, ty2)) =
-          let m1 = aux Domain ty1 in
-          let m2 = aux Normal ty2 in
-          let m =
-            if is-inline then
-              ${#m1 \arr-inline #m2}
-            else
-              ${#m1 \arr-display #m2}
-          in
-          ( match mode with
+        | Func(ty1, ty2) ->
+            let m1 = aux Domain ty1 in
+            let m2 = aux Normal ty2 in
+            let m =
+              if is-inline then
+                ${#m1 \arr-inline #m2}
+              else
+                ${#m1 \arr-display #m2}
+            in
+            match mode with
             | Normal -> m
             | _      -> ${\paren{#m}}
-          )
+            end
 
-      | mode (Prod(tys)) =
-          let ms = List.map (aux Single) tys in
-          let m = Math.join ${\mathbin{\ast}} ms in
-          ( match mode with
+        | Prod(tys) ->
+            let ms = List.map (aux Single) tys in
+            let m = Math.join ${\mathbin{\ast}} ms in
+            match mode with
             | Single -> ${\paren{#m}}
             | _      -> m
-          )
+            end
 
-      | mode (Cmd(it, tys)) =
-          let m =
-            match tys with
-            | [] ->
-                ${\ }
+        | Cmd(it, tys) ->
+            let m =
+              match tys with
+              | [] ->
+                  ${\ }
 
-            | _ :: _ ->
-                let ms = List.map (aux Normal) tys in
-                  Math.join ${\;\ } ms
-          in
-            ${\sqbracket{#m}\ \text!(it)}
+              | _ :: _ ->
+                  let ms = List.map (aux Normal) tys in
+                    Math.join ${\;\ } ms
+              end
+            in
+              ${\sqbracket{#m}\ \text!(it)}
 
-      | mode (Forall(ma, assocopt, ty)) =
-          let m = aux Normal ty in
-          ( match assocopt with
+        | Forall(ma, assocopt, ty) ->
+            let m = aux Normal ty in
+            match assocopt with
             | Some(assoc) ->
                 let mk = make-record-math assoc in
                 ${\forall #ma\mathrel{\mathord{:}\mathord{:}}\record-paren{#mk}.\ #m}
             | None ->
                 ${\forall #ma.\ #m}
-          )
+            end
 
-      | mode (Record(assoc)) =
-          let m = make-record-math assoc in
-            ${\record-paren{#m}}
+        | Record(assoc) ->
+            let m = make-record-math assoc in
+              ${\record-paren{#m}}
 
-      | _ (Paren(ty)) =
-          let m = aux Normal ty in
-            ${\paren{#m}}
+        | Paren(ty) ->
+            let m = aux Normal ty in
+              ${\paren{#m}}
+        end
 
 
-    and make-record-math assoc =
-      let ms =
-        assoc |> List.map (fun (key, ty) -> (
-          let m = aux Normal ty in
-          ${\text!{\no-break(key);} : #m}
-        ))
+      and make-record-math assoc =
+        let ms =
+          assoc |> List.map (fun (key, ty) -> (
+            let m = aux Normal ty in
+            ${\Math.text!{\Pervasives.no-break(key);} : #m}
+          ))
+        in
+        Math.join ${\;#sep-record-glue} ms
       in
-      Math.join ${\;#sep-record-glue} ms
+      aux Normal
+
+
+    val show = to-math true
+
+
+    val of-math m = Ctr({${m}}, [])
+
+
+    val base-type it = Ctr(it, [])
+
+    val ctr-type it tys = Ctr(it, tys)
+
+    val (-->) ty1 ty2 = Func(ty1, ty2)
+
+    val product tys = Prod(tys)
+
+    val record assoc = Record(assoc)
+
+    val cmdI tys = Cmd({inline-cmd}, tys)
+
+    val cmdB tys = Cmd({block-cmd}, tys)
+
+    val cmdM tys = Cmd({math-cmd}, tys)
+
+    val forall ma ty = Forall(ma, None, ty)
+
+    val forall-kinded ma kd ty = Forall(ma, Some(kd), ty)
+
+    val star t =
+      let m = show t in
+      Ctr({${\Math.sqbracket{#m}^{\Math.ast}}}, [])
+
+
+    val unit         = base-type {unit}
+    val bool         = base-type {bool}
+    val int          = base-type {int}
+    val float        = base-type {float}
+    val length       = base-type {length}
+    val string       = base-type {string}
+    val context      = base-type {context}
+    val inline-text  = base-type {inline-text}
+    val inline-boxes = base-type {inline-boxes}
+    val block-text   = base-type {block-text}
+    val block-boxes  = base-type {block-boxes}
+    val pre-path     = base-type {pre-path}
+    val path         = base-type {path}
+    val point        = base-type {point}
+    val graphics     = base-type {graphics}
+    val color        = base-type {color}
+    val deco         = base-type {deco}
+    val deco-set     = base-type {deco-set}
+    val paren        = base-type {paren}
+    val script       = base-type {script}
+    val image        = base-type {image}
+    val paddings     = base-type {paddings}
+    val cell         = base-type {cell}
+    val document     = base-type {document}
+    val page         = base-type {page}
+    val math-text    = base-type {math}
+    val itemize      = base-type {itemize}
+    val math-class   = base-type {math-class}
+    val math-char-class = base-type {math-char-class}
+
+
+    val list ty = Ctr({list}, [ty])
+    val option ty = Ctr({option}, [ty])
+    val ref ty = Ctr({ref}, [ty])
+
+
+    % ---- metavariables --
+
+    val meta m = Ctr({${#m}}, [])
+    val tymb = meta ${b}
+    val tymalpha = meta ${\Math.alpha}
+    val tymbeta = meta ${\Math.beta}
+    val tymsigma = meta ${\Math.sigma}
+    val tymtau = meta ${\Math.tau}
+    val tymtaup = meta ${\Math.tau'}
+    val tymtausub m = meta ${\Math.tau_{#m}}
+
+  end
+
+
+  val val-scheme ctx indexopt it-cmds ty explainopt =
+    let m = Type.to-math false ty in
+    let it-cmd =
+      it-cmds |> List.fold-left-adjacent (fun itacc it prevopt _ -> (
+        match prevopt with
+        | None    -> {\codem{#it;}}
+        | Some(_) -> {#itacc;, \codem{#it;}}
+        end
+      )) {}
     in
-    aux Normal
-
-
-  let show = to-math true
-
-
-  let of-math m = Ctr({${#m}}, [])
-
-
-  let base-type it = Ctr(it, [])
-
-  let ctr-type it tys = Ctr(it, tys)
-
-  let (-->) ty1 ty2 = Func(ty1, ty2)
-
-  let product tys = Prod(tys)
-
-  let record assoc = Record(assoc)
-
-  let cmdI tys = Cmd({inline-cmd}, tys)
-
-  let cmdB tys = Cmd({block-cmd}, tys)
-
-  let cmdM tys = Cmd({math-cmd}, tys)
-
-  let forall ma ty = Forall(ma, None, ty)
-
-  let forall-kinded ma kd ty = Forall(ma, Some(kd), ty)
-
-  let star t =
-    let m = show t in
-    Ctr({${\sqbracket{#m}^{\ast}}}, [])
-
-
-  let unit         = base-type {unit}
-  let bool         = base-type {bool}
-  let int          = base-type {int}
-  let float        = base-type {float}
-  let length       = base-type {length}
-  let string       = base-type {string}
-  let context      = base-type {context}
-  let inline-text  = base-type {inline-text}
-  let inline-boxes = base-type {inline-boxes}
-  let block-text   = base-type {block-text}
-  let block-boxes  = base-type {block-boxes}
-  let pre-path     = base-type {pre-path}
-  let path         = base-type {path}
-  let point        = base-type {point}
-  let graphics     = base-type {graphics}
-  let color        = base-type {color}
-  let deco         = base-type {deco}
-  let deco-set     = base-type {deco-set}
-  let paren        = base-type {paren}
-  let script       = base-type {script}
-  let image        = base-type {image}
-  let paddings     = base-type {paddings}
-  let cell         = base-type {cell}
-  let document     = base-type {document}
-  let page         = base-type {page}
-  let math         = base-type {math}
-  let itemize      = base-type {itemize}
-  let math-class   = base-type {math-class}
-  let math-char-class = base-type {math-char-class}
-
-
-  let list ty = Ctr({list}, [ty])
-  let option ty = Ctr({option}, [ty])
-  let ref ty = Ctr({ref}, [ty])
-
-
-  % ---- metavariables --
-
-  let meta m = Ctr({${#m}}, [])
-  let tymb = meta ${b}
-  let tymalpha = meta ${\alpha}
-  let tymbeta = meta ${\beta}
-  let tymsigma = meta ${\sigma}
-  let tymtau = meta ${\tau}
-  let tymtaup = meta ${\tau'}
-  let tymtausub m = meta ${\tau_{#m}}
-
-end
-
-
-let val-scheme ctx indexopt it-cmds ty explainopt =
-  let m = Type.to-math false ty in
-  let it-cmd =
-    it-cmds |> List.fold-left-adjacent (fun itacc it prevopt _ -> (
-      match prevopt with
-      | None    -> {\codem{#it;}}
-      | Some(_) -> {#itacc;, \codem{#it;}}
-    )) {}
-  in
-  let it =
-    match indexopt with
-    | None    -> {#it-cmd; : ${#m}}
-    | Some(s) -> {\index(s)?:({\code(s);}){#it-cmd;} : ${#m}}
-  in
-  let wid = get-text-width ctx in
-  let len = quote-indent-1 +' quote-indent-2 in
-  let ib =
-    inline-skip len ++
-      embed-block-top ctx (wid -' len)
-        (fun ctx ->
-          line-break true true ctx
-            (inline-skip (0pt -' quote-indent-2) ++
-              read-inline ctx it ++ inline-fil))
-  in
-  let bb-head =
-    let ctx =
+    let it =
+      match indexopt with
+      | None    -> {#it-cmd; : ${#m}}
+      | Some(s) -> {\Book.index?(it = {\Code.code(s);})(s){#it-cmd;} : ${#m}}
+      end
+    in
+    let wid = get-text-width ctx in
+    let len = quote-indent-1 +' quote-indent-2 in
+    let ib =
+      inline-skip len ++
+        embed-block-top ctx (wid -' len)
+          (fun ctx ->
+            line-break true true ctx
+              (inline-skip (0pt -' quote-indent-2) ++
+                read-inline ctx it ++ inline-fil))
+    in
+    let bb-head =
+      let ctx =
+        match explainopt with
+        | None    -> ctx
+        | Some(_) -> ctx |> set-paragraph-margin val-margin val-explain-margin
+        end
+      in
+        line-break true true ctx ib
+    in
+    let bb-explain =
       match explainopt with
-      | None    -> ctx
-      | Some(_) -> ctx |> set-paragraph-margin val-margin val-explain-margin
+      | None ->
+          block-nil
+
+      | Some(it-explain) ->
+          let pads = (quote-indent-1 +' quote-indent-2, 0pt, 0pt, 0pt) in
+          let decoset = VDecoSet.empty in
+          let ctx = ctx |> set-paragraph-margin val-explain-margin val-margin in
+            block-frame-breakable ctx pads decoset (fun ctx ->
+              line-break false true ctx
+                (read-inline ctx it-explain ++ inline-fil))
+      end
     in
-      line-break true true ctx ib
-  in
-  let bb-explain =
-    match explainopt with
-    | None ->
-        block-nil
+      inline-fil ++
+        embed-block-breakable ctx
+          (bb-head +++ bb-explain)
+            ++ omit-skip-after
 
-    | Some(it-explain) ->
-        let pads = (quote-indent-1 +' quote-indent-2, 0pt, 0pt, 0pt) in
-        let decoset = VDecoSet.empty in
-        let ctx = ctx |> set-paragraph-margin val-explain-margin val-margin in
-          block-frame-breakable ctx pads decoset (fun ctx ->
-            line-break false true ctx
-              (read-inline ctx it-explain ++ inline-fil))
-  in
+
+  val block ctx +example ?(label = labelopt) it =
+    let pads = (15pt, 15pt, 10pt, 10pt) in
+    let decoset = VDecoSet.simple-frame-stroke 1pt (Gray(0.75)) in
+    let bt =
+      match labelopt with
+      | None        -> '<+Book.example{#it;}>
+      | Some(label) -> '<+Book.example?(label = label)({#it;});>
+      end
+    in
+      block-frame-breakable ctx pads decoset (fun ctx ->
+        read-block ctx bt
+      )
+
+
+  val inline ctx \val ?(index = indexopt) it-cmd ty =
+    val-scheme ctx indexopt [it-cmd] ty None
+
+
+  val inline ctx \vals-explain it-cmds ty it =
+    val-scheme ctx None it-cmds ty (Some(it))
+
+
+  val inline ctx \val-explain ?(index = indexopt) it-cmd ty it =
+    val-scheme ctx indexopt [it-cmd] ty (Some(it))
+
+
+  val inline ctx \type ty =
+    script-guard Latin (embed-math ctx (read-math ctx (Type.to-math true ty)))
+
+
+  val math ctx \mtype ty =
+    read-math ctx ${\Math.text!{\type(ty);}}
+
+
+  val math ctx \tj mG t ty = read-math ctx ${#mG \Math.vdash \term!(t) : \mtype!(ty)}
+  val math ctx \tjI mG t = read-math ctx ${#mG \Math.vdash^{\Math.mathbf{I}} \term!(t)}
+  val math ctx \tjB mG t = read-math ctx ${#mG \Math.vdash^{\Math.mathbf{B}} \term!(t)}
+
+
+  val inline ctx \meta it =
+    let ctx =
+      ctx |> Book.set-latin-font Book.font-latin-italic
+    in
+      read-inline ctx it
+
+
+  val inline ctx \metasub msub it =
+    read-inline ctx {${\Math.text!{\meta{#it;}}\Math.text!{}_{#msub}}}
+
+
+  val inline ctx \meta-star it =
+    embed-math ctx (read-math ctx ${\Math.sqbracket{\Math.text!{#it;}}^{\Math.ast}})
+
+
+  val inline ctx \meta-plus it =
+    embed-math ctx (read-math ctx ${\Math.sqbracket{\Math.text!{#it;}}^{+}})
+
+
+  val inline ctx \meta-or its =
+    let m =
+      math-paren-with-middle ctx Math.paren-left Math.paren-right Math.bar-middle
+        (its |> List.map (fun it -> read-math ctx ${\Math.text!{#it;}}))
+    in
+      embed-math ctx m
+
+
+  val inline ctx \inline-frame inner =
+    let pads = (2pt, 2pt, 2pt, 2pt) in
+    let decoset = HDecoSet.simple-frame-stroke 0.5pt Color.black in
+      inline-frame-breakable pads decoset (read-inline ctx inner)
+
+
+  val math ctx \tuple mlst =
+    let m = Math.join ${,} mlst in
+    read-math ctx ${\Math.paren{#m}}
+
+
+  val block ctx +d-block content =
+    let pads = (10pt, 10pt, 5pt, 5pt) in
+    let decoset = VDecoSet.paper in
+      block-frame-breakable ctx pads decoset (fun ctx -> read-block ctx content)
+
+
+  val inline ctx \d-block content =
     inline-fil ++
-      embed-block-breakable ctx
-        (bb-head +++ bb-explain)
-          ++ omit-skip-after
+      embed-block-breakable ctx (read-block ctx '<+d-block(content);>)
+        ++ omit-skip-after
 
 
-let-block ctx +example ?:labelopt it =
-  let pads = (15pt, 15pt, 10pt, 10pt) in
-  let decoset = VDecoSet.simple-frame-stroke 1pt (Gray(0.75)) in
-  let bt =
-    match labelopt with
-    | None        -> '<+Book.example{#it;}>
-    | Some(label) -> '<+Book.example?*?:(label){#it;}>
-  in
-    block-frame-breakable ctx pads decoset (fun ctx ->
-      read-block ctx bt
-    )
+  val inline ctx \fbox it =
+    let pads = (2pt, 2pt, 2pt, 2pt) in
+    let t = 0.5pt in
+    let deco (x, y) w h d =
+      stroke t Color.black (Gr.rectangle (x, y -' d) (x +' w, y +' h))
+    in
+      inline-frame-inner pads deco (read-inline ctx it)
 
 
-let-inline ctx \val ?:indexopt it-cmd ty =
-  val-scheme ctx indexopt [it-cmd] ty None
+  type position-spec =
+    | Top
+    | Bottom
 
 
-let-inline ctx \vals-explain it-cmds ty it =
-  val-scheme ctx None it-cmds ty (Some(it))
+  val inline ctx \parbox ?(spec = specopt) wid ib =
+    let blockf =
+      match specopt with
+      | None         -> embed-block-top ctx wid
+      | Some(Top)    -> embed-block-top ctx wid
+      | Some(Bottom) -> embed-block-bottom ctx wid
+      end
+    in
+      blockf (fun ctx -> read-block ctx ib)
 
 
-let-inline ctx \val-explain ?:indexopt it-cmd ty it =
-  val-scheme ctx indexopt [it-cmd] ty (Some(it))
+  val inline ctx \as-latin-word it =
+    script-guard Latin (read-inline ctx it)
 
 
-let-inline ctx \type ty =
-  script-guard Latin (embed-math ctx (Type.to-math true ty))
+  val inline ctx \stack len its =
+    let bbf ctx =
+      its
+        |> List.map (fun it ->
+          line-break true true (ctx |> set-paragraph-margin 4pt 4pt)
+            (read-inline ctx it ++ inline-fil))
+        |> List.fold-left (+++) block-nil
+    in
+    embed-block-top ctx len bbf
 
 
-let-math \mtype ty =
-  ${\text!{\type(ty);}}
+  val structure-box r hw (x, y) it =
+    let rect = Gr.rectangle (x -' hw, y -' 0.25cm) (x +' hw, y +' 0.5cm) in
+    unite-graphics [
+      fill Color.white rect,
+      stroke 0.5pt Color.black rect,
+      r#text-centering (x, y) it,
+    ]
 
 
-let-math \tj mG t ty = ${#mG \vdash \term!(t) : \mtype!(ty)}
-let-math \tjI mG t = ${#mG \vdash^{\mathbf{I}} \term!(t)}
-let-math \tjB mG t = ${#mG \vdash^{\mathbf{B}} \term!(t)}
+  val structure-arrow-color = Color.black
+  val structure-arrow-half-width = 0.125cm
+  val structure-arrow-head-length = 0.2cm
+  val structure-arrow-head-width = 0.25cm
 
 
-let-inline ctx \meta it =
-  let ctx =
-    ctx |> Book.set-latin-font Book.font-latin-italic
-  in
+  val structure-arrow-down x y1 y2 =
+    let color = structure-arrow-color in
+    let hw = structure-arrow-half-width in
+    let trih = structure-arrow-head-length in
+    let trihw = structure-arrow-head-width in
+    unite-graphics [
+      fill color (Gr.rectangle (x -' hw, y1) (x +' hw, y2 +' trih)),
+      fill color (Gr.polygon
+        (x -' trihw, y2 +' trih) [
+          (x +' trihw, y2 +' trih),
+          (x, y2),
+        ]),
+    ]
+
+
+  val structure-arrow-left-head (x1, y) =
+    let color = structure-arrow-color in
+    let trih = structure-arrow-head-length in
+    let trihw = structure-arrow-head-width in
+    unite-graphics [
+      fill color (Gr.polygon
+        (x1, y +' trihw) [
+          (x1, y -' trihw),
+          (x1 -' trih, y),
+        ])
+    ]
+
+  val structure-arrow-left x1 x2 y =
+    let color = structure-arrow-color in
+    let trih = structure-arrow-head-length in
+    let hw = structure-arrow-half-width in
+    unite-graphics [
+      fill color (Gr.rectangle (x1 +' trih, y -' hw) (x2, y +' hw)),
+      structure-arrow-left-head (x1 +' trih, y),
+    ]
+
+
+  val structure-bend path =
+    let color = structure-arrow-color in
+    let hw = structure-arrow-half-width in
+  %  let trih = 0.2cm in
+  %  let trihw = 0.25cm in
+    unite-graphics [
+      stroke (hw *' 2.) color path,
+  %    fill color (Gr.polygon (x -' trihw, y) [
+  %        (x +' trihw, y);
+  %        (x, y -' trih);
+  %      ]);
+    ]
+
+
+  val block ctx +desc it-head it =
+    let pads = (desc-indent, 0pt, 0pt, 0pt) in
+    let decoset = VDecoSet.empty in
+    block-frame-breakable ctx pads decoset (fun ctx -> (
+      let ctx-head =
+        ctx |> Book.set-cjk-font Book.font-cjk-gothic
+            |> Book.set-latin-font Book.font-latin-sans
+      in
+      let ib =
+        inline-skip (0pt -' desc-indent)
+          ++ read-inline ctx-head it-head
+          ++ inline-skip 12pt
+          ++ read-inline ctx it
+      in
+        line-break true true ctx (ib ++ inline-fil)
+    ))
+
+
+
+  type file-entry =
+    | File      of inline-text
+    | Directory of inline-text * list file-entry
+
+
+  val draw-directory-tree r pt dx dy fe =
+    let lx1 = 6pt in
+    let lx2 = 3pt in
+    let ly = 4pt in
+    let ydown = 3pt in
+    let thk = 1pt in
+    let rec aux (x, y) fe =
+      match fe with
+      | File(it) ->
+          (1, r#text-rightward (x, y) it)
+
+      | Directory(it, fes) ->
+          let gdir =
+            r#text-rightward (x, y) it
+          in
+          let xsub = x +' dx in
+          let (gsacc, cnt) =
+            fes |> List.fold-left (fun (gsacc, cnt) fe -> (
+              let ysub = y -' dy *' (float cnt) in
+              let gline =
+                stroke thk Color.black
+                  (Gr.line (x +' lx1, ysub +' ly) (xsub -' lx2, ysub +' ly))
+              in
+              let (n, gs) = aux (xsub, ysub) fe in
+                (unite-graphics [gline, gs] :: gsacc, cnt + n)
+            )) ([], 1)
+          in
+          let gdline =
+            stroke thk Color.black
+              (Gr.line (x +' lx1, y -' ydown)
+                (x +' lx1, y -' dy *' (float (cnt - 1)) +' ly -' thk *' 0.5))
+          in
+            (cnt, unite-graphics (gdir :: gdline :: List.reverse gsacc))
+      end
+    in
+    let (_, gs) = aux pt fe in
+    gs
+
+
+  val block ctx +centering it =
+    line-break true true ctx
+      (inline-fil ++ read-inline ctx it ++ inline-fil)
+
+
+  val block ctx +centerings its =
+    let l = get-font-size ctx *' 0.25 in
+    let bbs =
+      its |> List.map (fun it ->
+        line-break true true (ctx |> set-paragraph-margin l l)
+          (inline-fil ++ read-inline ctx it ++ inline-fil))
+    in
+      bbs |> List.fold-left (+++) block-nil
+
+
+  val inline ctx \glue-between-tokens =
+    let size = get-font-size ctx in
+    discretionary 1000
+      (inline-glue (size *' 0.5) (size *' 0.125) (size *' 0.125))
+  %    (inline-skip (size *' 1.0) ++ inline-fil)
+      (inline-glue 0pt 0pt 1cm)
+      inline-nil
+
+
+  val inline ctx \reserved-word it =
+    let ctx =
+      ctx |> Book.set-latin-font Book.font-latin-mono
+    in
     read-inline ctx it
 
 
-let-inline ctx \metasub msub it =
-  read-inline ctx {${\text!{\meta{#it;}}\text!{}_{#msub}}}
-
-
-let-inline ctx \meta-star it =
-  embed-math ctx ${\sqbracket{\text!{#it;}}^{\ast}}
-
-
-let-inline ctx \meta-plus it =
-  embed-math ctx ${\sqbracket{\text!{#it;}}^{+}}
-
-
-let-inline ctx \meta-or its =
-  let m =
-    math-paren-with-middle Math.paren-left Math.paren-right Math.bar-middle
-      (its |> List.map (fun it -> ${\text!{#it;}}))
-  in
-    embed-math ctx m
-
-
-let-inline ctx \inline-frame inner =
-  let pads = (2pt, 2pt, 2pt, 2pt) in
-  let decoset = HDecoSet.simple-frame-stroke 0.5pt Color.black in
-    inline-frame-breakable pads decoset (read-inline ctx inner)
-
-
-let-math \tuple mlst =
-  let m = Math.join ${,} mlst in
-    ${\paren{#m}}
-
-
-let-block ctx +d-block content =
-  let pads = (10pt, 10pt, 5pt, 5pt) in
-  let decoset = VDecoSet.paper in
-    block-frame-breakable ctx pads decoset (fun ctx -> read-block ctx content)
-
-
-let-inline ctx \d-block content =
-  inline-fil ++
-    embed-block-breakable ctx (read-block ctx '<+d-block(content);>)
+  val inline ctx \tokens its =
+    let ib =
+      its |> List.fold-left-adjacent (fun ibacc it _ opt -> (
+        let ib =
+          match opt with
+          | None    -> read-inline ctx {\Pervasives.no-break{\reserved-word{#it;}}}
+          | Some(_) -> read-inline ctx {\Pervasives.no-break{\reserved-word{#it;}}\glue-between-tokens;}
+          end
+        in
+        ibacc ++ ib
+      )) inline-nil
+    in
+    let pads = (5pt, 5pt, 5pt, 5pt) in
+    inline-fil ++
+      embed-block-breakable ctx
+        (block-frame-breakable ctx pads display-code-decoset (fun ctx ->
+          line-break true true ctx (ib ++ inline-fil)))
       ++ omit-skip-after
 
 
-let-inline ctx \fbox it =
-  let pads = (2pt, 2pt, 2pt, 2pt) in
-  let t = 0.5pt in
-  let deco (x, y) w h d =
-    [ stroke t Color.black (Gr.rectangle (x, y -' d) (x +' w, y +' h)) ]
-  in
-    inline-frame-inner pads deco (read-inline ctx it)
+  val tylogical = Type.(bool --> (bool --> bool))
+  val tyarithI = Type.(int --> (int --> int))
+  val tycompI = Type.(int --> (int --> bool))
+  val tyarithF = Type.(float --> (float --> int))
+  val tycompF = Type.(float --> (float --> bool))
+  val tysine = Type.(float --> float)
 
 
-type position-spec =
-  | Top
-  | Bottom
+  val paren-right-fake hgt dpt ctx =
+    let (fontsize, hgtaxis, color) = extract-spec-from-context ctx in
 
+    let halflen = Math.half-length hgt dpt hgtaxis fontsize in
+    let w0 = fontsize *' 0.1 in
+    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+    let w2 = halflen *' 0.25 in %temporary
+    let w-extra = fontsize *' 0.1 in
+    let t1 = 0pt -' fontsize *' 0.025 in
+    let t2 = fontsize *' 0.025 in
 
-let-inline ctx \parbox ?:specopt wid ib =
-  let blockf =
-    match specopt with
-    | None         -> embed-block-top ctx wid
-    | Some(Top)    -> embed-block-top ctx wid
-    | Some(Bottom) -> embed-block-bottom ctx wid
-  in
-    blockf (fun ctx -> read-block ctx ib)
+    let qA = halflen *' 0.35 in
+    let p1 = 0pt -' (w1 +' w2) *' 0.75 in
+    let q1 = halflen *' 0.3 in
 
+    let qB = halflen *' 0.45 in
+    let p2 = 0pt -' w2 *' 0.5 in
+    let q2 = halflen *' 0.2 in
 
-let-inline ctx \as-latin-word it =
-  script-guard Latin (read-inline ctx it)
-
-
-let-inline ctx \stack len its =
-  let bbf ctx =
-    its
-      |> List.map (fun it ->
-        line-break true true (ctx |> set-paragraph-margin 4pt 4pt)
-          (read-inline ctx it ++ inline-fil))
-      |> List.fold-left (+++) block-nil
-  in
-  embed-block-top ctx len bbf
-
-
-let structure-box r hw (x, y) it =
-  let rect = Gr.rectangle (x -' hw, y -' 0.25cm) (x +' hw, y +' 0.5cm) in
-  [
-    fill Color.white rect;
-    stroke 0.5pt Color.black rect;
-    r#text-centering (x, y) it;
-  ]
-
-
-let structure-arrow-color = Color.black
-let structure-arrow-half-width = 0.125cm
-let structure-arrow-head-length = 0.2cm
-let structure-arrow-head-width = 0.25cm
-
-
-let structure-arrow-down x y1 y2 =
-  let color = structure-arrow-color in
-  let hw = structure-arrow-half-width in
-  let trih = structure-arrow-head-length in
-  let trihw = structure-arrow-head-width in
-  [
-    fill color (Gr.rectangle (x -' hw, y1) (x +' hw, y2 +' trih));
-    fill color (Gr.polygon
-      (x -' trihw, y2 +' trih) [
-        (x +' trihw, y2 +' trih);
-        (x, y2);
-      ]);
-  ]
-
-
-let structure-arrow-left-head (x1, y) =
-  let color = structure-arrow-color in
-  let trih = structure-arrow-head-length in
-  let trihw = structure-arrow-head-width in
-  [
-    fill color (Gr.polygon
-      (x1, y +' trihw) [
-        (x1, y -' trihw);
-        (x1 -' trih, y);
-      ])
-  ]
-
-let structure-arrow-left x1 x2 y =
-  let color = structure-arrow-color in
-  let trih = structure-arrow-head-length in
-  let hw = structure-arrow-half-width in
-  List.append [
-    fill color (Gr.rectangle (x1 +' trih, y -' hw) (x2, y +' hw));
-  ] (structure-arrow-left-head (x1 +' trih, y))
-
-
-let structure-bend path =
-  let color = structure-arrow-color in
-  let hw = structure-arrow-half-width in
-%  let trih = 0.2cm in
-%  let trihw = 0.25cm in
-  [
-    stroke (hw *' 2.) color path;
-%    fill color (Gr.polygon (x -' trihw, y) [
-%        (x +' trihw, y);
-%        (x, y -' trih);
-%      ]);
-  ]
-
-
-let-block ctx +desc it-head it =
-  let pads = (desc-indent, 0pt, 0pt, 0pt) in
-  let decoset = VDecoSet.empty in
-  block-frame-breakable ctx pads decoset (fun ctx -> (
-    let ctx-head =
-      ctx |> Book.set-cjk-font Book.font-cjk-gothic
-          |> Book.set-latin-font Book.font-latin-sans
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let x0 = xpos +' w-extra +' w2 +' w1 in
+      let x1 = xpos +' w-extra +' w2 in
+      let x2 = xpos +' w-extra in
+      start-path (x2, ycenter +' halflen)
+        |> bezier-to (x2 -' p1, ycenter +' halflen -' q1) (x0, ycenter +' qA) (x0, ycenter)
+        |> bezier-to (x0, ycenter -' qA) (x2 -' p1, ycenter -' halflen +' q1) (x2, ycenter -' halflen)
+        |> line-to (x2 +' t1, ycenter -' halflen +' t2)
+        |> bezier-to (x2 -' p2, ycenter -' halflen +' q2) (x1, ycenter -' qB) (x1, ycenter)
+        |> bezier-to (x1, ycenter +' qB) (x2 -' p2, ycenter +' halflen -' q2) (x2 +' t1, ycenter +' halflen -' t2)
+        |> close-with-line
     in
-    let ib =
-      inline-skip (0pt -' desc-indent)
-        ++ read-inline ctx-head it-head
-        ++ inline-skip 12pt
-        ++ read-inline ctx it
-    in
-      line-break true true ctx (ib ++ inline-fil)
-  ))
+    let graphics point = fill color (path point) in
+    let widparen = w0 +' w1 +' w2 +' w-extra in
+    let kerninfo _ = 0pt in  % no kerning !
+      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
+  val math ctx \paren-fake m = math-paren ctx Math.paren-left paren-right-fake (read-math ctx m)
 
-type file-entry =
-  | File      of inline-text
-  | Directory of inline-text * file-entry list
-
-
-let draw-directory-tree r pt dx dy fe =
-  let lx1 = 6pt in
-  let lx2 = 3pt in
-  let ly = 4pt in
-  let ydown = 3pt in
-  let thk = 1pt in
-  let-rec aux (x, y) fe =
-    match fe with
-    | File(it) ->
-        (1, [r#text-rightward (x, y) it])
-
-    | Directory(it, fes) ->
-        let gdir =
-          r#text-rightward (x, y) it
-        in
-        let xsub = x +' dx in
-        let (gsacc, cnt) =
-          fes |> List.fold-left (fun (gsacc, cnt) fe -> (
-            let ysub = y -' dy *' (float cnt) in
-            let gline =
-              stroke thk Color.black
-                (Gr.line (x +' lx1, ysub +' ly) (xsub -' lx2, ysub +' ly))
-            in
-            let (n, gs) = aux (xsub, ysub) fe in
-              ((gline :: gs) :: gsacc, cnt + n)
-          )) ([], 1)
-        in
-        let gdline =
-          stroke thk Color.black
-            (Gr.line (x +' lx1, y -' ydown)
-              (x +' lx1, y -' dy *' (float (cnt - 1)) +' ly -' thk *' 0.5))
-        in
-          (cnt, gdir :: gdline :: List.concat (List.reverse gsacc))
-  in
-  let (_, gs) = aux pt fe in
-  gs
-
-
-let-block ctx +centering it =
-  line-break true true ctx
-    (inline-fil ++ read-inline ctx it ++ inline-fil)
-
-
-let-block ctx +centerings its =
-  let l = get-font-size ctx *' 0.25 in
-  let bbs =
-    its |> List.map (fun it ->
-      line-break true true (ctx |> set-paragraph-margin l l)
-        (inline-fil ++ read-inline ctx it ++ inline-fil))
-  in
-    bbs |> List.fold-left (+++) block-nil
-
-
-let-inline ctx \glue-between-tokens =
-  let size = get-font-size ctx in
-  discretionary 1000
-    (inline-glue (size *' 0.5) (size *' 0.125) (size *' 0.125))
-%    (inline-skip (size *' 1.0) ++ inline-fil)
-    (inline-glue 0pt 0pt 1cm)
-    inline-nil
-
-
-let-inline ctx \reserved-word it =
-  let ctx =
-    ctx |> Book.set-latin-font Book.font-latin-mono
-  in
-  read-inline ctx it
-
-
-let-inline ctx \tokens its =
-  let ib =
-    its |> List.fold-left-adjacent (fun ibacc it _ opt -> (
-      let ib =
-        match opt with
-        | None    -> read-inline ctx {\no-break{\reserved-word{#it;}}}
-        | Some(_) -> read-inline ctx {\no-break{\reserved-word{#it;}}\glue-between-tokens;}
-      in
-      ibacc ++ ib
-    )) inline-nil
-  in
-  let pads = (5pt, 5pt, 5pt, 5pt) in
-  inline-fil ++
-    embed-block-breakable ctx
-      (block-frame-breakable ctx pads display-code-decoset (fun ctx ->
-        line-break true true ctx (ib ++ inline-fil)))
-    ++ omit-skip-after
-
-
-let tylogical = Type.(bool --> (bool --> bool))
-let tyarithI = Type.(int --> (int --> int))
-let tycompI = Type.(int --> (int --> bool))
-let tyarithF = Type.(float --> (float --> int))
-let tycompF = Type.(float --> (float --> bool))
-let tysine = Type.(float --> float)
-
-
-let paren-right-fake hgt dpt hgtaxis fontsize color =
-  let halflen = Math.half-length hgt dpt hgtaxis fontsize in
-  let w0 = fontsize *' 0.1 in
-  let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
-  let w2 = halflen *' 0.25 in %temporary
-  let w-extra = fontsize *' 0.1 in
-  let t1 = 0pt -' fontsize *' 0.025 in
-  let t2 = fontsize *' 0.025 in
-
-  let qA = halflen *' 0.35 in
-  let p1 = 0pt -' (w1 +' w2) *' 0.75 in
-  let q1 = halflen *' 0.3 in
-
-  let qB = halflen *' 0.45 in
-  let p2 = 0pt -' w2 *' 0.5 in
-  let q2 = halflen *' 0.2 in
-
-  let path (xpos, ypos) =
-    let ycenter = ypos +' hgtaxis in
-    let x0 = xpos +' w-extra +' w2 +' w1 in
-    let x1 = xpos +' w-extra +' w2 in
-    let x2 = xpos +' w-extra in
-    start-path (x2, ycenter +' halflen)
-      |> bezier-to (x2 -' p1, ycenter +' halflen -' q1) (x0, ycenter +' qA) (x0, ycenter)
-      |> bezier-to (x0, ycenter -' qA) (x2 -' p1, ycenter -' halflen +' q1) (x2, ycenter -' halflen)
-      |> line-to (x2 +' t1, ycenter -' halflen +' t2)
-      |> bezier-to (x2 -' p2, ycenter -' halflen +' q2) (x1, ycenter -' qB) (x1, ycenter)
-      |> bezier-to (x1, ycenter +' qB) (x2 -' p2, ycenter +' halflen -' q2) (x2 +' t1, ycenter +' halflen -' t2)
-      |> close-with-line
-  in
-  let graphics point = [ fill color (path point); ] in
-  let widparen = w0 +' w1 +' w2 +' w-extra in
-  let kerninfo _ = 0pt in  % no kerning !
-    (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
-
-
-let-math \paren-fake = math-paren Math.paren-left paren-right-fake
-
-let-math \braket m1 m2 m3 =
-  math-paren-with-middle
-    (Math.angle-left 0.5pt) (Math.angle-right 0.5pt)
-      Math.bar-middle [m1; m2; m3]
+  val math ctx \braket m1 m2 m3 =
+    math-paren-with-middle ctx
+      (Math.angle-left 0.5pt) (Math.angle-right 0.5pt)
+        Math.bar-middle ([m1, m2, m3] |> List.map (read-math ctx))
+end

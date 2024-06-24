@@ -1,374 +1,382 @@
 % -*- coding: utf-8 -*-
-@import: settings
+use package open Stdlib
+use package open Code
+use package open Math
+use package open Itemize
+use package open Tabular
+use open BookClass of `book-class`
+use open Settings of `settings`
 
-let typography = '<
-  +p{
-    文字は組版処理の主役であり，そして最も人間くささゆえの複雑性を備えた組版処理対象だ．
-    現在の\SATySFi;はひとまず和欧混植がそれらしくできることを志向して開発したため
-    かなりアドホックな面も目立つのだが，
-    ひとまず文字をどのように分類して扱っているかについてここで説明する．
-  }
-  +section{文字の扱いの基本}<
+module Typography = struct
+  val typography =
+    let open Book in
+    let open Pervasives in
+  '<
     +p{
-      \SATySFi;に限らず，一般に横組みの文字組版（とりわけラテン文字の組版）に於いては
-      文字を排列させる基準として\dfnje{\index(`ベースライン`){ベースライン}}{baseline}
-      という水平線が想定される．
-      “文字に対応する形状” を\dfn{\index(`ジケイ`){字形}}
-      または\dfnje{\index(`グリフ`){グリフ}}{glyph}と呼び，
-      入力されたテキストデータからそれに対応づけられたグリフの列を
-      ベースライン上に一定の規則で排列させていくことを広く組版処理と言う．
-      排列は，ベースライン上に
-      \dfnje{\index(`サンショウテン`){参照点}}{reference point}
-      と呼ばれる点を想定して行なわれる．
-      フォントは（テキストを構成する）各文字に対して，
-      その文字のグリフを参照点を基準にしてどんな輪廓線で描くかの情報と，
-      その文字がどれだけの
-      \dfnje{\index(`ジハバ`){字幅}}{advance width}
-      をもつかなどの情報を関連づけており，
-      基本的には以下の図のように
-      「或る参照点 ${p_n} に基づいて文字 ${c_n} のグリフ ${g_n} を描いたら，
-      ${p_n} から文字 ${c_n} の字幅 ${w_n} だけ版面上で右に\footnote{
-        アラビア文字やヘブライ文字などRTL (right-to-left)な文字体系では
-        「左に」だが，\SATySFi;がRTLの文字体系に未対応なこともあって，
-        ここでは簡単のため考えないことにする．
-      }移動した位置を
-      新たな参照点 ${p_{n + 1}} とし，その参照点から
-      次の文字 ${c_{n + 1}} のグリフ ${g_{n + 1}} を描く」
-      という処理を繰り返すことによりテキストをグリフの列として描画する，
-      というモデルが採られている：
+      文字は組版処理の主役であり，そして最も人間くささゆえの複雑性を備えた組版処理対象だ．
+      現在の\SATySFi;はひとまず和欧混植がそれらしくできることを志向して開発したため
+      かなりアドホックな面も目立つのだが，
+      ひとまず文字をどのように分類して扱っているかについてここで説明する．
     }
-    +centered-graphics(14cm)(3.5cm)(fun r -> (
-      let draw-point pt =
-        let path = Gr.circle pt 3pt in
-        [ fill Color.white path;
-          stroke 0.5pt Color.black path; ]
-      in
-      let draw-arrow pt1 pt2 =
-        Gr.arrow 0.5pt Color.black 6pt 5pt 1.5pt pt1 pt2
-      in
-      let x = 7cm in
-      let y = 1.5cm in
-      List.concat [
-        [
-          stroke 0.5pt Color.black (Gr.rectangle (0cm, 0cm) (14cm, 3.5cm));
-          r#text-centering (x, y) {\BoxGraphics.roman?:(20mm){|g|l|y|p|h|s|}};
-          stroke 0.5pt Color.black (Gr.line (x -' 3.5cm, y) (x +' 3.5cm, y));
-        ];
-        draw-point (x -' 2.497cm, y);
-        draw-point (x -' 1.557cm, y);
-        draw-point (x -' 1.063cm, y);
-        draw-point (x -' 0.233cm, y);
-        draw-point (x +' 0.74cm, y);
-        draw-point (x +' 1.8cm, y);
+    +section{文字の扱いの基本}<
+      +p{
+        \SATySFi;に限らず，一般に横組みの文字組版（とりわけラテン文字の組版）に於いては
+        文字を排列させる基準として\dfnje{\index(`ベースライン`){ベースライン}}{baseline}
+        という水平線が想定される．
+        “文字に対応する形状” を\dfn{\index(`ジケイ`){字形}}
+        または\dfnje{\index(`グリフ`){グリフ}}{glyph}と呼び，
+        入力されたテキストデータからそれに対応づけられたグリフの列を
+        ベースライン上に一定の規則で排列させていくことを広く組版処理と言う．
+        排列は，ベースライン上に
+        \dfnje{\index(`サンショウテン`){参照点}}{reference point}
+        と呼ばれる点を想定して行なわれる．
+        フォントは（テキストを構成する）各文字に対して，
+        その文字のグリフを参照点を基準にしてどんな輪廓線で描くかの情報と，
+        その文字がどれだけの
+        \dfnje{\index(`ジハバ`){字幅}}{advance width}
+        をもつかなどの情報を関連づけており，
+        基本的には以下の図のように
+        「或る参照点 ${p_n} に基づいて文字 ${c_n} のグリフ ${g_n} を描いたら，
+        ${p_n} から文字 ${c_n} の字幅 ${w_n} だけ版面上で右に\footnote{
+          アラビア文字やヘブライ文字などRTL (right-to-left)な文字体系では
+          「左に」だが，\SATySFi;がRTLの文字体系に未対応なこともあって，
+          ここでは簡単のため考えないことにする．
+        }移動した位置を
+        新たな参照点 ${p_{n + 1}} とし，その参照点から
+        次の文字 ${c_{n + 1}} のグリフ ${g_{n + 1}} を描く」
+        という処理を繰り返すことによりテキストをグリフの列として描画する，
+        というモデルが採られている：
+      }
+      +centered-graphics(14cm)(3.5cm)(fun r -> (
+        let draw-point pt =
+          let path = Gr.circle pt 3pt in
+          unite-graphics [
+            fill Color.white path,
+            stroke 0.5pt Color.black path,
+          ]
+        in
+        let draw-arrow pt1 pt2 =
+          Gr.arrow 0.5pt Color.black 6pt 5pt 1.5pt pt1 pt2
+        in
+        let x = 7cm in
+        let y = 1.5cm in
+        unite-graphics [
+          stroke 0.5pt Color.black (Gr.rectangle (0cm, 0cm) (14cm, 3.5cm)),
+          r#text-centering (x, y) {\BoxGraphics.roman?(size = 20mm)({|g|l|y|p|h|s|});},
+          stroke 0.5pt Color.black (Gr.line (x -' 3.5cm, y) (x +' 3.5cm, y)),
+          draw-point (x -' 2.497cm, y),
+          draw-point (x -' 1.557cm, y),
+          draw-point (x -' 1.063cm, y),
+          draw-point (x -' 0.233cm, y),
+          draw-point (x +' 0.74cm, y),
+          draw-point (x +' 1.8cm, y),
 
-        draw-arrow (x -' 3cm, y -' 0.5cm) (x -' 2.6cm, y -' 0.1cm);
-        [ r#text-leftward (x -' 3.1cm, y -' 0.7cm) {g の参照点}; ];
+          draw-arrow (x -' 3cm, y -' 0.5cm) (x -' 2.6cm, y -' 0.1cm),
+          r#text-leftward (x -' 3.1cm, y -' 0.7cm) {g の参照点},
 
-        draw-arrow (x +' 1.2cm, y -' 0.8cm) (x +' 0.9cm, y -' 0.2cm);
-        [ r#text-rightward (x +' 1cm, y -' 1.2cm) {h の参照点}; ];
+          draw-arrow (x +' 1.2cm, y -' 0.8cm) (x +' 0.9cm, y -' 0.2cm),
+          r#text-rightward (x +' 1cm, y -' 1.2cm) {h の参照点},
 
-        [
-          r#text-rightward (x +' 3.6cm, y -' 0.1cm) {ベースライン};
-        ];
-      ]
-    ));
-    +p{
-      ベースラインや参照点は
-      \SATySFi;では文字組版だけでなく
-      \ref-chapter(`graphics`);で説明するグラフィックスの取り扱いに関しても
-      必要となる概念なので，よく意識されたい．
-    }
+          r#text-rightward (x +' 3.6cm, y -' 0.1cm) {ベースライン},
+        ]
+      ));
+      +p{
+        ベースラインや参照点は
+        \SATySFi;では文字組版だけでなく
+        \ref-chapter(`graphics`);で説明するグラフィックスの取り扱いに関しても
+        必要となる概念なので，よく意識されたい．
+      }
+    >
+    +section{文字の分類}<
+      +p{
+        \SATySFi;はUnicodeコードポイントに対して以下の方法でそれぞれ分類する：
+
+        \listing{
+          * どの\dfnje{文字体系}{script}に属するか
+          * “東アジア的観点から” \dfnje{広い}{wide}文字か\dfnje{狭い}{narrow}文字か
+          * どの\dfnje{行分割クラス}{line breaking class}に属するか
+        }%
+
+        文字体系は\dfn{Unicode Script Property} \cite[`unicode-script`];により規定されているが，
+        現在の\SATySFi;は\code(`Hani`);，\code(`Kana`);，\code(`Latn`);と「それ以外」の4種類を
+
+        \d-code(```
+          type script = HanIdeographic | Kana | Latin | OtherScript
+        ```);%
+
+        で定義されるような\type(Type.script);型で扱う．
+        勿論扱える文字体系は今後増やしていく想定であり，
+        或いは\type(Type.script);型のように文字体系があらかじめ言語にハードコードされた方法ではない，
+        より一般的な方法で文字体系を区別する方法に変更するかもしれない．
+      }
+      +p{
+        文字が “東アジア的観点から” 広いか狭いかは
+        \dfn{East Asian Width} \cite[`unicode-eaw`];に基づいて判断される．
+        East Asian Widthは東アジアのレガシーな文字表示に於いて
+        各文字が “いわゆる「全角」で表示されるものであるか，
+        いわゆる「半角」で表示されるものであるか” といったことを
+        規定しているプロパティなのだが，
+        \SATySFi;ではこのプロパティを
+        主に属する文字体系のないUnicodeコードポイントを扱うのに
+        有用な情報として転用している．
+        East Asian Widthは各Unicodeコードポイントを
+        Fullwidth (F)，Wide (W)，Ambiguous (A)，
+        Halfwidth (H)，Narrow (Na)，Neutral (N)
+        の6種類のいずれかに分類しており，\SATySFi;は
+        このうちの前2分類に該当するUnicodeコードポイントを\dfnje{広い}{wide}文字，
+        後ろ4分類に該当するものを\dfnje{狭い}{narrow}文字として扱う．
+      }
+      +p{
+        残る分類方法は行分割クラスである．これは
+        \dfn{Unicode Line Breaking Algorithm} \cite[`unicode-lb`];
+        で定義されたline breaking classとおおよそ一致する分類方法だが，
+        『日本語組版の要件』\cite[`jlreq`];，通称JLreqで定義されている
+        \dfn{文字クラス}の要素を取り込んで独自に少し上書きしたものだ．
+        すべて掲載すると長いので，
+        Unicode Line Breaking Algorithmが定義する
+        line breaking classとの差分を以下に述べる：
+
+        \listing{
+          * BK (Mandatory Break)，CR (Carriage Return)，LF (Line Feed)，NL (Next Line)を廃止し，
+            代わりにいずれもINBR (Input Break)という新しい分類に統一する．
+
+          * JLreqが定義する文字クラス
+            cl-01（始め括弧類），
+            cl-02（終わり括弧類），
+    %          cl-03（ハイフン類），
+    %          cl-04（区切り約物），
+    %          cl-05（中点類），
+            cl-06（句点類），
+            cl-07（読点類），
+            cl-10（長音記号）
+    %          cl-11（小書きの仮名）
+            に相当する
+            JLOP (JL Open Punctuation)，
+            JLCP (JL Close Punctuation)，
+    %          JLHY (JL Hyphens)，
+    %          JLNS (JL Nonstarter)，
+    %          JLMD (JL Middle Dot)，
+            JLFS (JL Full Stops)，
+            JLCM (JL Commas)，
+            JLPL (JL Prolonged Sound Mark)
+    %          JLSM (JL Small Kanas)
+            という分類をそれぞれ新たに用意する．
+
+          * \ref-table(`lb`);のとおりに上書きする．
+            \table?(label = `lb`)({行分割クラスの上書き定義})<
+              +centering{\size(8.5pt){
+                \tabular(fun cellf _ _ -> (
+                  let ucp snum sname itch itlbc =
+                    [ cellf {\code(`U+` ^ snum);}, cellf (embed-string sname),
+                        cellf {\fbox{#itch;}}, cellf itlbc ]
+                  in
+                  [
+                    ucp `2018` `LEFT SINGLE QUOTATION MARK             ` {‘} {OP},
+                    ucp `2019` `RIGHT SINGLE QUOTATION MARK            ` {’} {CP},
+                    ucp `201B` `SINGLE HIGH-REVERSED-9 QUOTATION MARK  ` {‛} {OP  },
+                    ucp `201C` `LEFT DOUBLE QUOTATION MARK             ` {“} {OP  },
+                    ucp `201D` `RIGHT DOUBLE QUOTATION MARK            ` {”} {CP  },
+                    ucp `201F` `DOUBLE HIGH-REVERSED-9 QUOTATION MARK  ` {‟} {OP  },
+                    ucp `3001` `IDEOGRAPHIC COMMA                      ` {、} {JLCM},
+                    ucp `3002` `IDEOGRAPHIC FULL STOP                  ` {。} {JLFS},
+                    ucp `3008` `LEFT ANGLE BRACKET                     ` {〈} {JLOP},
+                    ucp `3009` `RIGHT ANGLE BRACKET                    ` {〉} {JLCP},
+                    ucp `300A` `LEFT DOUBLE ANGLE BRACKET              ` {《} {JLOP},
+                    ucp `300B` `RIGHT DOUBLE ANGLE BRACKET             ` {》} {JLCP},
+                    ucp `300C` `LEFT CORNER BRACKET                    ` {「} {JLOP},
+                    ucp `300D` `RIGHT CORNER BRACKET                   ` {」} {JLCP},
+                    ucp `300E` `LEFT WHITE CORNER BRACKET              ` {『} {JLOP},
+                    ucp `300F` `RIGHT WHITE CORNER BRACKET             ` {』} {JLCP},
+                    ucp `3010` `LEFT BLACK LENTICULAR BRACKET          ` {【} {JLOP},
+                    ucp `3011` `RIGHT BLACK LENTICULAR BRACKET         ` {】} {JLCP},
+                    ucp `3014` `LEFT TORTOISE SHELL BRACKET            ` {〔} {JLOP},
+                    ucp `3015` `RIGHT TORTOISE SHELL BRACKET           ` {〕} {JLCP},
+                    ucp `3016` `LEFT WHITE LENTICULAR BRACKET          ` {〖} {JLOP},
+                    ucp `3017` `RIGHT WHITE LENTICULAR BRACKET         ` {〗} {JLCP},
+                    ucp `3018` `LEFT WHITE TORTOISE SHELL BRACKET      ` {〘} {JLOP},
+                    ucp `3019` `RIGHT WHITE TORTOISE SHELL BRACKET     ` {〙} {JLCP},
+                    ucp `301A` `LEFT WHITE SQUARE BRACKET              ` {〚} {JLOP},
+                    ucp `301B` `RIGHT WHITE SQUARE BRACKET             ` {〛} {JLCP},
+                    ucp `30FC` `KATAKANA-HIRAGARA PROLONGED SOUND MARK ` {ー} {JLPL},
+                    ucp `FF08` `FULLWIDTH LEFT PARENTHESIS             ` {（} {JLOP},
+                    ucp `FF09` `FULLWIDTH RIGHT PARENTHESIS            ` {）} {JLCP},
+                    ucp `FF0C` `FULLWIDTH COMMA                        ` {，} {JLCM},
+                    ucp `FF0E` `FULLWIDTH FULL STOP                    ` {．} {JLFS},
+                    ucp `FF3B` `FULLWIDTH LEFT SQUARE BRACKET          ` {［} {JLOP},
+                    ucp `FF3D` `FULLWIDTH RIGHT SQUARE BRACKET         ` {］} {JLCP},
+                    ucp `FF5B` `FULLWIDTH LEFT CURLY BRACKET           ` {｛} {JLOP},
+                    ucp `FF5D` `FULLWIDTH RIGHT CURLY BRACKET          ` {｝} {JLCP},
+                    ucp `FF5F` `FULLWIDTH LEFT WHITE PARENTHESIS       ` {｟} {JLOP},
+                    ucp `FF60` `FULLWIDTH RIGHT WHITE PARENTHESIS      ` {｠} {JLCP},
+                  ]
+                ))(fun xs ys ->
+                  Gr.empty
+                );
+              }}
+            >
+        }%
+
+        また，これに伴ってUnicode Line Breaking Algorithmも一部拡張する．
+        具体的には
+
+        \listing{
+          * LB13: ${\times} \meta-or{|CL|CP|EX|IS|SY|JLCP|JLCM|JLFS|}
+          * LB14: \meta-or{|OP|JLOP|} ${\text!{SP}^{\ast}} ${\times}
+          * LB16: \meta-or{|CL|CP|} ${\text!{SP}^{\ast}} ${\times} \meta-or{|NS|CJ|JLPL|}
+          * LB21: ${\times} \meta-or{|BA|HY|NS|CJ|JLPL|}，\quad;BB ${\times}
+        }%
+
+        と変更する．規則の読み方は\cite[`unicode-lb`];を参照されたい．
+        なお，INBRクラスとSPクラスに該当する文字，つまり “改行文字” や “空白文字” は，
+        行分割候補箇所を決定する前に以下に挙げるような規則に基づく正規化処理により除去される場合がある．
+        すなわち，IDs という略記で \meta-or{|ID|CJ|IN|SA|JLOP|JLCP|JLFS|JLCM|JLPL|} を表すとして，
+        各 SP または INBR の文字は前後が
+        以下のどのパターンに（先に挙げたものほど高い優先度で）マッチするかによって，
+        除去するか，残すか，置換するか等の処理を決定する．
+
+        \listing{
+          * 前方が IDs，後方が AL にそれぞれマッチする SP または INBR は除去する．
+          * 前方が AL，後方が IDs にそれぞれマッチする SP または INBR は除去する．
+          * 前方が IDs，後方が IDs にそれぞれマッチする INBR は除去する．
+          * 前方が IDs，後方が IDs にそれぞれマッチする SP は残す．
+          * 前方が IDs に合致する SP または INBR は除去する．
+          * 後方が IDs に合致する SP または INBR は除去する．
+          * INBR は SP に置換する．
+        }%
+
+        この正規化の処理は，和文の途中にある改行文字は特に何も書いていないのと同じだが，
+        欧文の途中にある改行文字は単語間空白と扱われることが期待されている，
+        という区別が必要であることを反映したものになっている．
+      }
+    >
+    +section{フォントの扱い}<
+      +p{
+        \SATySFi;に於ける「フォント」を規定するのは，
+        単にOpenTypeフォントファイル\footnote{
+          TrueType Collectionの場合も加味すると，
+          正確には「フォントファイル内の要素のひとつ」．
+        }に関連づけられたフォント名 ${F} ではなく，
+        これに\dfn{拡大率} ${r} と\dfn{ベースライン調整率} ${r'} という2つの数値が備えつけられた3つ組
+        ${\tuple{|F|r|r'|}} である．
+        フォントは文字体系ごとに別個に設定され，
+        次のようなプリミティヴを用いる：
+
+        \val-explain?(index = `set-font`)({set-font})%
+          (Type.(script --> (product [string, float, float] --> (context --> context)))) {
+            \codem{\meta{ctx} \|\> set-font \meta{script} (\meta{fontname}, \meta{r}, \meta{rb})}
+            で文字体系\codem{\meta{script}}に対するフォント設定を\codem{(\meta{fontname}, \meta{r}, \meta{rb})}
+            に更新したテキスト処理文脈\codem{\meta{ctx}}を返す．
+          }%
+
+        \val-explain?(index = `get-font`)({get-font})%
+          (Type.(context --> (script --> product [string, float, float]))) {
+            \codem{get-font \meta{script} \meta{ctx}}で
+            \codem{\meta{ctx}}に格納されている\codem{\meta{script}}のフォント設定を取り出す．
+          }%
+
+        拡大率が ${r} に設定されている場合，テキスト処理文脈設定されている文字サイズを ${s} としたとき，
+        ${F} のもつグリフやメトリックの情報は ${r s} を1emとするようなサイズで使われる．
+        すなわち，${r < 1} なら “標準的な大きさ” から縮小補正がかかり，
+        ${r > 1} なら拡大補正，${r = 1} ならばそのまま，ということである．
+        さらに，ベースライン調整率が ${r'} に設定されている場合，
+        ${F} のグリフは通常よりも ${r' s} だけベースラインを持ち上げた位置に描かれる．
+        すなわち，${r' = 0} なら補正せず，${r' < 0} ならば基準よりも下に，
+        ${r' > 0} ならば上に補正される．
+        これら拡大率とベースライン調整率は，
+        ラテン文字と漢字などベースラインに対する捉え方の異なる文字体系をスムーズに共存させるための補正である．
+        実際，ラテン文字と漢字で異なるフォントデータ ${F_1}，${F_2} を用いて組み，
+        フォントサイズ ${s} をそのまま ${F_1} と ${F_2} の両方で素直に1emにすると，
+        大抵の場合はラテン文字の方が小さく見えてしまう．
+        そこで，通常は和文の方を小さくするように補正する．
+        本書では${r_1 = 1}，${r_2 = 0.88} という拡大率を
+        ラテン文字に使うフォントと漢字や仮名に使うフォントにそれぞれ設定している．
+        なお，ベースライン調整率は両者ともに ${0} にしている．
+        和文フォントは和欧混植を見越してか
+        もともとベースラインを仮想ボディの下端よりも上に設定しているものが多く，
+        改めて補正する必要がなかったためである．
+      }
+    >
+    +section{異なる文字体系間の空白}<
+      +p{
+        一般に，ラテン文字と漢字など，異なる文字体系の文字が隣接する際には
+        字間を空けないと詰まりすぎて見える．
+        \SATySFi;は，互いに異なる文字体系に属する文字が隣接している箇所に自動でグルーを挿入する．
+        このグルーの各長さに関する情報は単語間空白と同様にフォントサイズに対する比率で
+        テキスト処理文脈が保持している．
+        デフォルトでは
+        \codem{Latin}と\codem{HanIdeographic}の間，\codem{Latin}と\codem{Kana}の間，
+        およびそれらの前後逆の4種類の組み合わせに対して\codem{(0.24, 0.08, 0.16)}が設定されているが，
+        以下のプリミティヴによって変更できる：
+
+        \val-explain?(index = `set-space-ratio-between-scripts`)({set-space-ratio-between-scripts})%
+          (Type.(script --> (script --> (float --> (float --> (float --> (context --> context))))))) {
+            \codem{\meta{ctx} \|\> set-space-ratio-between-scripts
+              \metasub(${1}){script} \metasub(${2}){script}
+                \metasub(${0}){r} \metasub(${1}){r} \metasub(${2}){r}}
+            で前方が文字体系\codem{\metasub(${1}){script}}の文字，
+            後方が文字体系\codem{\metasub(${2}){script}}の文字の隣接箇所で
+            自然長，収縮基準長，伸長基準長の文字サイズに対する比率が
+            それぞれ
+            \codem{\metasub(${0}){r}}，
+            \codem{\metasub(${1}){r}}，
+            \codem{\metasub(${2}){r}}であるようなグルーを挿入するように
+            \codem{\meta{ctx}}を更新したテキスト処理文脈を返す．
+          }%
+
+        スペーシングに関してインラインボックス列を
+        特定の文字体系のテキストに “擬態させる” 方法として，
+        次のプリミティヴが使える：
+
+        \val-explain?(index = `script-guard`)({script-guard})%
+          (Type.(script --> (inline-boxes --> inline-boxes))) {
+            \codem{script-guard \meta{script} \meta{ib}}で
+            インラインボックス列\codem{\meta{ib}}を前後のスペーシングに関して
+            文字体系\codem{\meta{script}}のテキストとして扱う．
+          }%
+      }
+    >
+    +section{寡占的文字体系}<
+      +p{
+        文字の広い/狭いの区別は，文字体系が特に定まっていない約物などのUnicodeコードポイントを
+        特定の文字体系へと “吸収” するのに用いる．
+        \SATySFi;では，テキストは基本的に “代表となる文字体系” が意識されて書かれているという仮定のもと，
+        テキスト処理文脈に “現在の寡占的な文字体系” の情報を保持させるようになっている．
+        “寡占的な文字体系” は2つ設定することができ，
+        ひとつは特定の文字体系に属さない広い文字をどの文字体系に “吸収” して扱うかで，
+        もうひとつは特定の文字体系に属さない狭い文字をどの文字体系へと “吸収” して扱うかである．
+        前者に設定された文字体系を\dfnje{広い寡占的文字体系}{dominant wide script}，
+        後者を\dfnje{狭い寡占的文字体系}{dominant narrow script}と呼ぶ．
+        例えば和欧混植の場合，前者は\codem{Kana}，後者は\codem{Latin}に設定するとよい．
+        こうすることで，いわゆる “全角用の” 約物は仮名の仲間として扱われることになってフォントも仮名と揃えられ，
+        一方で “アルファベット用の” 約物はラテン文字の仲間として扱われ，
+        フォントがラテン文字のものと揃えられることになる．
+        このような設定に関与するのが以下のプリミティヴたちである：
+
+        \val-explain?(index = `set-dominant-wide-script`)({set-dominant-wide-script})%
+          (Type.(script --> (context --> context))) {
+            第1引数に与えられた文字体系を広い寡占的文字体系に設定する．
+          }%
+
+        \val-explain?(index = `get-dominant-wide-script`)({get-dominant-wide-script})%
+          (Type.(context --> script)) {
+            広い寡占的文字体系に設定されている文字体系を取得する．
+          }%
+
+        \val-explain?(index = `set-dominant-narrow-script`)({set-dominant-narrow-script})%
+          (Type.(script --> (context --> context))) {
+            第1引数に与えられた文字体系を狭い寡占的文字体系に設定する．
+          }%
+
+        \val-explain?(index = `get-dominant-narrow-script`)({get-dominant-narrow-script})%
+          (Type.(context --> script)) {
+            狭い寡占的文字体系に設定されている文字体系を取得する．
+          }%
+
+        以上の仕組みを知って「なんとアドホックな仕組みであることか」と驚かれる読者も多いかもしれない．
+        正直なところ著者もそう思うが，一応現状では和欧混植に関してよく効力を発揮している．
+        おそらく “より多言語な組版” を扱うには耐えない仕組みであろうから，
+        この仕組みが将来の非互換な変更で大きく形を変える可能性は高い．
+      }
+    >
   >
-  +section{文字の分類}<
-    +p{
-      \SATySFi;はUnicodeコードポイントに対して以下の方法でそれぞれ分類する：
-
-      \listing{
-        * どの\dfnje{文字体系}{script}に属するか
-        * “東アジア的観点から” \dfnje{広い}{wide}文字か\dfnje{狭い}{narrow}文字か
-        * どの\dfnje{行分割クラス}{line breaking class}に属するか
-      }%
-
-      文字体系は\dfn{Unicode Script Property} \cite[`unicode-script`];により規定されているが，
-      現在の\SATySFi;は\code(`Hani`);，\code(`Kana`);，\code(`Latn`);と「それ以外」の4種類を
-
-      \d-code(```
-        type script = HanIdeographic | Kana | Latin | OtherScript
-      ```);%
-
-      で定義されるような\type(Type.script);型で扱う．
-      勿論扱える文字体系は今後増やしていく想定であり，
-      或いは\type(Type.script);型のように文字体系があらかじめ言語にハードコードされた方法ではない，
-      より一般的な方法で文字体系を区別する方法に変更するかもしれない．
-    }
-    +p{
-      文字が “東アジア的観点から” 広いか狭いかは
-      \dfn{East Asian Width} \cite[`unicode-eaw`];に基づいて判断される．
-      East Asian Widthは東アジアのレガシーな文字表示に於いて
-      各文字が “いわゆる「全角」で表示されるものであるか，
-      いわゆる「半角」で表示されるものであるか” といったことを
-      規定しているプロパティなのだが，
-      \SATySFi;ではこのプロパティを
-      主に属する文字体系のないUnicodeコードポイントを扱うのに
-      有用な情報として転用している．
-      East Asian Widthは各Unicodeコードポイントを
-      Fullwidth (F)，Wide (W)，Ambiguous (A)，
-      Halfwidth (H)，Narrow (Na)，Neutral (N)
-      の6種類のいずれかに分類しており，\SATySFi;は
-      このうちの前2分類に該当するUnicodeコードポイントを\dfnje{広い}{wide}文字，
-      後ろ4分類に該当するものを\dfnje{狭い}{narrow}文字として扱う．
-    }
-    +p{
-      残る分類方法は行分割クラスである．これは
-      \dfn{Unicode Line Breaking Algorithm} \cite[`unicode-lb`];
-      で定義されたline breaking classとおおよそ一致する分類方法だが，
-      『日本語組版の要件』\cite[`jlreq`];，通称JLreqで定義されている
-      \dfn{文字クラス}の要素を取り込んで独自に少し上書きしたものだ．
-      すべて掲載すると長いので，
-      Unicode Line Breaking Algorithmが定義する
-      line breaking classとの差分を以下に述べる：
-
-      \listing{
-        * BK (Mandatory Break)，CR (Carriage Return)，LF (Line Feed)，NL (Next Line)を廃止し，
-          代わりにいずれもINBR (Input Break)という新しい分類に統一する．
-
-        * JLreqが定義する文字クラス
-          cl-01（始め括弧類），
-          cl-02（終わり括弧類），
-  %          cl-03（ハイフン類），
-  %          cl-04（区切り約物），
-  %          cl-05（中点類），
-          cl-06（句点類），
-          cl-07（読点類），
-          cl-10（長音記号）
-  %          cl-11（小書きの仮名）
-          に相当する
-          JLOP (JL Open Punctuation)，
-          JLCP (JL Close Punctuation)，
-  %          JLHY (JL Hyphens)，
-  %          JLNS (JL Nonstarter)，
-  %          JLMD (JL Middle Dot)，
-          JLFS (JL Full Stops)，
-          JLCM (JL Commas)，
-          JLPL (JL Prolonged Sound Mark)
-  %          JLSM (JL Small Kanas)
-          という分類をそれぞれ新たに用意する．
-
-        * \ref-table(`lb`);のとおりに上書きする．
-          \table?:(`lb`){行分割クラスの上書き定義}<
-            +centering{\size(8.5pt){
-              \tabular(fun t -> (
-                let l = t#l in
-                let ucp snum sname itch itlbc =
-                  [ l {\code(`U+` ^ snum);}; l (embed-string sname);
-                      l {\fbox{#itch;}}; l itlbc ]
-                in
-                [
-                  ucp `2018` `LEFT SINGLE QUOTATION MARK             ` {‘} {OP};
-                  ucp `2019` `RIGHT SINGLE QUOTATION MARK            ` {’} {CP};
-                  ucp `201B` `SINGLE HIGH-REVERSED-9 QUOTATION MARK  ` {‛} {OP  };
-                  ucp `201C` `LEFT DOUBLE QUOTATION MARK             ` {“} {OP  };
-                  ucp `201D` `RIGHT DOUBLE QUOTATION MARK            ` {”} {CP  };
-                  ucp `201F` `DOUBLE HIGH-REVERSED-9 QUOTATION MARK  ` {‟} {OP  };
-                  ucp `3001` `IDEOGRAPHIC COMMA                      ` {、} {JLCM};
-                  ucp `3002` `IDEOGRAPHIC FULL STOP                  ` {。} {JLFS};
-                  ucp `3008` `LEFT ANGLE BRACKET                     ` {〈} {JLOP};
-                  ucp `3009` `RIGHT ANGLE BRACKET                    ` {〉} {JLCP};
-                  ucp `300A` `LEFT DOUBLE ANGLE BRACKET              ` {《} {JLOP};
-                  ucp `300B` `RIGHT DOUBLE ANGLE BRACKET             ` {》} {JLCP};
-                  ucp `300C` `LEFT CORNER BRACKET                    ` {「} {JLOP};
-                  ucp `300D` `RIGHT CORNER BRACKET                   ` {」} {JLCP};
-                  ucp `300E` `LEFT WHITE CORNER BRACKET              ` {『} {JLOP};
-                  ucp `300F` `RIGHT WHITE CORNER BRACKET             ` {』} {JLCP};
-                  ucp `3010` `LEFT BLACK LENTICULAR BRACKET          ` {【} {JLOP};
-                  ucp `3011` `RIGHT BLACK LENTICULAR BRACKET         ` {】} {JLCP};
-                  ucp `3014` `LEFT TORTOISE SHELL BRACKET            ` {〔} {JLOP};
-                  ucp `3015` `RIGHT TORTOISE SHELL BRACKET           ` {〕} {JLCP};
-                  ucp `3016` `LEFT WHITE LENTICULAR BRACKET          ` {〖} {JLOP};
-                  ucp `3017` `RIGHT WHITE LENTICULAR BRACKET         ` {〗} {JLCP};
-                  ucp `3018` `LEFT WHITE TORTOISE SHELL BRACKET      ` {〘} {JLOP};
-                  ucp `3019` `RIGHT WHITE TORTOISE SHELL BRACKET     ` {〙} {JLCP};
-                  ucp `301A` `LEFT WHITE SQUARE BRACKET              ` {〚} {JLOP};
-                  ucp `301B` `RIGHT WHITE SQUARE BRACKET             ` {〛} {JLCP};
-                  ucp `30FC` `KATAKANA-HIRAGARA PROLONGED SOUND MARK ` {ー} {JLPL};
-                  ucp `FF08` `FULLWIDTH LEFT PARENTHESIS             ` {（} {JLOP};
-                  ucp `FF09` `FULLWIDTH RIGHT PARENTHESIS            ` {）} {JLCP};
-                  ucp `FF0C` `FULLWIDTH COMMA                        ` {，} {JLCM};
-                  ucp `FF0E` `FULLWIDTH FULL STOP                    ` {．} {JLFS};
-                  ucp `FF3B` `FULLWIDTH LEFT SQUARE BRACKET          ` {［} {JLOP};
-                  ucp `FF3D` `FULLWIDTH RIGHT SQUARE BRACKET         ` {］} {JLCP};
-                  ucp `FF5B` `FULLWIDTH LEFT CURLY BRACKET           ` {｛} {JLOP};
-                  ucp `FF5D` `FULLWIDTH RIGHT CURLY BRACKET          ` {｝} {JLCP};
-                  ucp `FF5F` `FULLWIDTH LEFT WHITE PARENTHESIS       ` {｟} {JLOP};
-                  ucp `FF60` `FULLWIDTH RIGHT WHITE PARENTHESIS      ` {｠} {JLCP};
-                ]
-              ))(fun xs ys ->
-                []
-              );
-            }}
-          >
-      }%
-
-      また，これに伴ってUnicode Line Breaking Algorithmも一部拡張する．
-      具体的には
-
-      \listing{
-        * LB13: ${\times} \meta-or{|CL|CP|EX|IS|SY|JLCP|JLCM|JLFS|}
-        * LB14: \meta-or{|OP|JLOP|} ${\text!{SP}^{\ast}} ${\times}
-        * LB16: \meta-or{|CL|CP|} ${\text!{SP}^{\ast}} ${\times} \meta-or{|NS|CJ|JLPL|}
-        * LB21: ${\times} \meta-or{|BA|HY|NS|CJ|JLPL|}，\quad;BB ${\times}
-      }%
-
-      と変更する．規則の読み方は\cite[`unicode-lb`];を参照されたい．
-      なお，INBRクラスとSPクラスに該当する文字，つまり “改行文字” や “空白文字” は，
-      行分割候補箇所を決定する前に以下に挙げるような規則に基づく正規化処理により除去される場合がある．
-      すなわち，IDs という略記で \meta-or{|ID|CJ|IN|SA|JLOP|JLCP|JLFS|JLCM|JLPL|} を表すとして，
-      各 SP または INBR の文字は前後が
-      以下のどのパターンに（先に挙げたものほど高い優先度で）マッチするかによって，
-      除去するか，残すか，置換するか等の処理を決定する．
-
-      \listing{
-        * 前方が IDs，後方が AL にそれぞれマッチする SP または INBR は除去する．
-        * 前方が AL，後方が IDs にそれぞれマッチする SP または INBR は除去する．
-        * 前方が IDs，後方が IDs にそれぞれマッチする INBR は除去する．
-        * 前方が IDs，後方が IDs にそれぞれマッチする SP は残す．
-        * 前方が IDs に合致する SP または INBR は除去する．
-        * 後方が IDs に合致する SP または INBR は除去する．
-        * INBR は SP に置換する．
-      }%
-
-      この正規化の処理は，和文の途中にある改行文字は特に何も書いていないのと同じだが，
-      欧文の途中にある改行文字は単語間空白と扱われることが期待されている，
-      という区別が必要であることを反映したものになっている．
-    }
-  >
-  +section{フォントの扱い}<
-    +p{
-      \SATySFi;に於ける「フォント」を規定するのは，
-      単にOpenTypeフォントファイル\footnote{
-        TrueType Collectionの場合も加味すると，
-        正確には「フォントファイル内の要素のひとつ」．
-      }に関連づけられたフォント名 ${F} ではなく，
-      これに\dfn{拡大率} ${r} と\dfn{ベースライン調整率} ${r'} という2つの数値が備えつけられた3つ組
-      ${\tuple{|F|r|r'|}} である．
-      フォントは文字体系ごとに別個に設定され，
-      次のようなプリミティヴを用いる：
-
-      \val-explain?:(`set-font`)({set-font})%
-        (Type.(script --> (product [string; float; float] --> (context --> context)))) {
-          \codem{\meta{ctx} \|\> set-font \meta{script} (\meta{fontname}, \meta{r}, \meta{rb})}
-          で文字体系\codem{\meta{script}}に対するフォント設定を\codem{(\meta{fontname}, \meta{r}, \meta{rb})}
-          に更新したテキスト処理文脈\codem{\meta{ctx}}を返す．
-        }%
-
-      \val-explain?:(`get-font`)({get-font})%
-        (Type.(context --> (script --> product [string; float; float]))) {
-          \codem{get-font \meta{script} \meta{ctx}}で
-          \codem{\meta{ctx}}に格納されている\codem{\meta{script}}のフォント設定を取り出す．
-        }%
-
-      拡大率が ${r} に設定されている場合，テキスト処理文脈設定されている文字サイズを ${s} としたとき，
-      ${F} のもつグリフやメトリックの情報は ${r s} を1emとするようなサイズで使われる．
-      すなわち，${r < 1} なら “標準的な大きさ” から縮小補正がかかり，
-      ${r > 1} なら拡大補正，${r = 1} ならばそのまま，ということである．
-      さらに，ベースライン調整率が ${r'} に設定されている場合，
-      ${F} のグリフは通常よりも ${r' s} だけベースラインを持ち上げた位置に描かれる．
-      すなわち，${r' = 0} なら補正せず，${r' < 0} ならば基準よりも下に，
-      ${r' > 0} ならば上に補正される．
-      これら拡大率とベースライン調整率は，
-      ラテン文字と漢字などベースラインに対する捉え方の異なる文字体系をスムーズに共存させるための補正である．
-      実際，ラテン文字と漢字で異なるフォントデータ ${F_1}，${F_2} を用いて組み，
-      フォントサイズ ${s} をそのまま ${F_1} と ${F_2} の両方で素直に1emにすると，
-      大抵の場合はラテン文字の方が小さく見えてしまう．
-      そこで，通常は和文の方を小さくするように補正する．
-      本書では${r_1 = 1}，${r_2 = 0.88} という拡大率を
-      ラテン文字に使うフォントと漢字や仮名に使うフォントにそれぞれ設定している．
-      なお，ベースライン調整率は両者ともに ${0} にしている．
-      和文フォントは和欧混植を見越してか
-      もともとベースラインを仮想ボディの下端よりも上に設定しているものが多く，
-      改めて補正する必要がなかったためである．
-    }
-  >
-  +section{異なる文字体系間の空白}<
-    +p{
-      一般に，ラテン文字と漢字など，異なる文字体系の文字が隣接する際には
-      字間を空けないと詰まりすぎて見える．
-      \SATySFi;は，互いに異なる文字体系に属する文字が隣接している箇所に自動でグルーを挿入する．
-      このグルーの各長さに関する情報は単語間空白と同様にフォントサイズに対する比率で
-      テキスト処理文脈が保持している．
-      デフォルトでは
-      \codem{Latin}と\codem{HanIdeographic}の間，\codem{Latin}と\codem{Kana}の間，
-      およびそれらの前後逆の4種類の組み合わせに対して\codem{(0.24, 0.08, 0.16)}が設定されているが，
-      以下のプリミティヴによって変更できる：
-
-      \val-explain?:(`set-space-ratio-between-scripts`)({set-space-ratio-between-scripts})%
-        (Type.(script --> (script --> (float --> (float --> (float --> (context --> context))))))) {
-          \codem{\meta{ctx} \|\> set-space-ratio-between-scripts
-            \metasub(${1}){script} \metasub(${2}){script}
-              \metasub(${0}){r} \metasub(${1}){r} \metasub(${2}){r}}
-          で前方が文字体系\codem{\metasub(${1}){script}}の文字，
-          後方が文字体系\codem{\metasub(${2}){script}}の文字の隣接箇所で
-          自然長，収縮基準長，伸長基準長の文字サイズに対する比率が
-          それぞれ
-          \codem{\metasub(${0}){r}}，
-          \codem{\metasub(${1}){r}}，
-          \codem{\metasub(${2}){r}}であるようなグルーを挿入するように
-          \codem{\meta{ctx}}を更新したテキスト処理文脈を返す．
-        }%
-
-      スペーシングに関してインラインボックス列を
-      特定の文字体系のテキストに “擬態させる” 方法として，
-      次のプリミティヴが使える：
-
-      \val-explain?:(`script-guard`)({script-guard})%
-        (Type.(script --> (inline-boxes --> inline-boxes))) {
-          \codem{script-guard \meta{script} \meta{ib}}で
-          インラインボックス列\codem{\meta{ib}}を前後のスペーシングに関して
-          文字体系\codem{\meta{script}}のテキストとして扱う．
-        }%
-    }
-  >
-  +section{寡占的文字体系}<
-    +p{
-      文字の広い/狭いの区別は，文字体系が特に定まっていない約物などのUnicodeコードポイントを
-      特定の文字体系へと “吸収” するのに用いる．
-      \SATySFi;では，テキストは基本的に “代表となる文字体系” が意識されて書かれているという仮定のもと，
-      テキスト処理文脈に “現在の寡占的な文字体系” の情報を保持させるようになっている．
-      “寡占的な文字体系” は2つ設定することができ，
-      ひとつは特定の文字体系に属さない広い文字をどの文字体系に “吸収” して扱うかで，
-      もうひとつは特定の文字体系に属さない狭い文字をどの文字体系へと “吸収” して扱うかである．
-      前者に設定された文字体系を\dfnje{広い寡占的文字体系}{dominant wide script}，
-      後者を\dfnje{狭い寡占的文字体系}{dominant narrow script}と呼ぶ．
-      例えば和欧混植の場合，前者は\codem{Kana}，後者は\codem{Latin}に設定するとよい．
-      こうすることで，いわゆる “全角用の” 約物は仮名の仲間として扱われることになってフォントも仮名と揃えられ，
-      一方で “アルファベット用の” 約物はラテン文字の仲間として扱われ，
-      フォントがラテン文字のものと揃えられることになる．
-      このような設定に関与するのが以下のプリミティヴたちである：
-
-      \val-explain?:(`set-dominant-wide-script`)({set-dominant-wide-script})%
-        (Type.(script --> (context --> context))) {
-          第1引数に与えられた文字体系を広い寡占的文字体系に設定する．
-        }%
-
-      \val-explain?:(`get-dominant-wide-script`)({get-dominant-wide-script})%
-        (Type.(context --> script)) {
-          広い寡占的文字体系に設定されている文字体系を取得する．
-        }%
-
-      \val-explain?:(`set-dominant-narrow-script`)({set-dominant-narrow-script})%
-        (Type.(script --> (context --> context))) {
-          第1引数に与えられた文字体系を狭い寡占的文字体系に設定する．
-        }%
-
-      \val-explain?:(`get-dominant-narrow-script`)({get-dominant-narrow-script})%
-        (Type.(context --> script)) {
-          狭い寡占的文字体系に設定されている文字体系を取得する．
-        }%
-
-      以上の仕組みを知って「なんとアドホックな仕組みであることか」と驚かれる読者も多いかもしれない．
-      正直なところ著者もそう思うが，一応現状では和欧混植に関してよく効力を発揮している．
-      おそらく “より多言語な組版” を扱うには耐えない仕組みであろうから，
-      この仕組みが将来の非互換な変更で大きく形を変える可能性は高い．
-    }
-  >
->
+end

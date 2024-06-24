@@ -1,517 +1,526 @@
 % -*- coding: utf-8 -*-
-@import: settings
+use package open Stdlib
+use package open Code
+use package open Itemize
+use open BookClass of `book-class`
+use open Settings of `settings`
 
-let line-breaking = '<
-  +section{行分割処理の概要}<
-    +p{
-      行分割処理に於いて，見た目が十分整うように行を段落に切り分けるのはそれほど自明ではない．
-      まずは行を切り分けて良い箇所の決定である．
-      例えばラテン文字やキリル文字といった “欧文” は基本的に
-        単語間の空白
-      か
-        ハイフネーション上許容される単語の途中の箇所
-      か
-      のいずれかでしか行を分けてはいけないという制約があるし，
-      和文でも
-        開き括弧の直後
-      や
-        小書きの「っ」や音引き「ー」の直前
-      など，行を分けてはいけない箇所の “規定” がいくらかある．
-      このほか，例えば読点の直後で行を分けた場合は行の途中の読点とは違って
-      読点の後ろに2分アキを入れない，
-      つまりいわゆる “全角幅” の半分の空白を設けないなどといった，
-      行末が揃っているように見せるための “規則” もある．
-      こういった，行を切り分けてよい箇所・いけない箇所の区別と切り分けた場合の特別な処理を
-      \SATySFi;で実装するにあたっては，
-      まず多言語対応の組版を意図して
-      \dfn{Unicode Line Breaking Algorithm} \cite[`unicode-lb`]; に
-      原則従うことにし，
-      特にひとまず和文・欧文の混植を優先して実現することを目的としていたので
-      この和文の組版規則については『\dfn{日本語組版処理の要件}』\cite[`jlreq`];，
-      通称\dfn{JLreq}にできるだけ従って実装した．
-      ハイフネーションについては，やはり偉大な先駆者である\TeX;処理系に倣って
-      \dfn{Liang–Knuthアルゴリズム} \cite[`liang-knuth`]; をもとに実装した．
-    }
-    +p{
-      また実際に切り分ける箇所を決定する処理も自明ではない．
-      前から順に詰められるだけ詰めて切り分けるという単純な貪欲アルゴリズムでは
-      後ろの行が前に比べて過度に間延びして美しく見えないような出力もできてしまうから，
-      “段落全体を見渡してから行分割箇所を決める” ような処理を効率的に行なう必要があるのである．
-      この行分割に関しては，\dfn{Knuth–Plassアルゴリズム} \cite[`knuth-plass`]; と呼ばれる，
-      \TeX;で採用されたものとおおよそ同様の処理を独自に拡張して用いることにした．
-      このアルゴリズムでは，端的に言えば
-      \dfn{最短経路問題}に帰着することで適切な行分割箇所を選んでいる．
-      独自に拡張したのは，\inline-frame{\inline-frame{入れ子になった枠}のついた部分でも
-      途中で行分割できるようにしたこと}に関してである．
-    }
-    +p{
-      Knuth–Plassアルゴリズムに於ける行分割処理の最短経路問題への帰着は
-      シンプルにして巧妙であり，
-      実用上もかなり多くの組版上の要請に応えられるものとなっている\footnote{
-        Knuth自身も
-        “\TeX;’s line-breaking algorithm has proved to be general enough
-        to handle a surprising variety of different applications\;
-        this, in fact, is probably the most interesting aspect of the whole \TeX; system.”
-        と述べている \cite[`TeXbook`];．
-      }．
-      行分割処理を担う機構は，まず段落に組み上げるインラインボックス列を受け取って，
-      その中の行分割候補となる各箇所とボックス列の先頭および末尾を頂点とし，
-      この間に重みつきの辺を張って有向グラフをつくることを考える．
-      この有向グラフは，
-      頂点 ${u} と ${v} の間に
-      「${u} で行分割したあとに ${v} で行分割するとその間にどの程度体裁の悪い行が生じるか」
-      という罰則値を重みとしてもつ辺を張って構築する．
-      この罰則値は
-      \listing{
-        * 単語間の空白があらかじめ決められた自然な長さと比べてどの程度伸縮することになり，
-          それは許容できる伸縮量の基準値に対してどの程度の割合か
-
-        * ${v} それ自体がもつ “行分割してほしくなさ” である
-          \dfnje{\index(`ペナルティチ`){ペナルティ値}}{penalty}
-      }%
-
-      に基づいて計算される\footnote{
-        あまりにも体裁が悪い行ができるとわかる場合
-        （例えば単語間の空白を自然な長さにすると行長に全く届かないような，
-        短い数単語しか含まない行が生じる場合）
-        はそもそも辺を張らないことによって最短経路を求める計算効率を上げる．
-      }．
-      そして，この有向グラフ上でボックス列の先頭から末尾までを結ぶ経路のうち，
-      長さ（すなわち各辺の重みの合計）が最小となるものを選ぶと，
-      段落全体として最も端整な行のセットが得られ，
-      その経路をなす頂点で行分割すればよいことがわかる，という仕組みである．
-      前述のとおり，\SATySFi;も\TeX;で採用されたこの巧妙な仕組みを継承して用いている．
-      以下でこの行分割処理を制御するプリミティヴを紹介する．
-    }
-  >
-  +section{行分割に関するプリミティヴ}<
-    +subsection{行分割候補箇所}<
+module LineBreaking = struct
+  val line-breaking =
+    let open Book in
+    let open Pervasives in
+  '<
+    +section{行分割処理の概要}<
       +p{
-        \ref-chapter(`advanced-command-definition`);に於いて，
-        行分割処理そのものを担うプリミティヴが
-
-        \val?:(`line-break`)({line-break})(Type.(bool --> (bool -->
-          (context --> (inline-boxes --> block-boxes)))));%
-
-        であることはすでに\ref-chapter(`advanced-command-definition`);で紹介したが，
-        分割される箇所の候補がどのように決定され，
-        その処理にユーザやパッケージ開発者がどのように介入できるかについてはまだ触れていなかった．
-        これについて以下で少し解説する．
-        本章のほかに，行分割の仕組みを扱っているわかりやすい文献としては
-        \cite[`Kuroki2015`; `TeXbyTopic`];などがあるので是非参照されたい．
+        行分割処理に於いて，見た目が十分整うように行を段落に切り分けるのはそれほど自明ではない．
+        まずは行を切り分けて良い箇所の決定である．
+        例えばラテン文字やキリル文字といった “欧文” は基本的に
+          単語間の空白
+        か
+          ハイフネーション上許容される単語の途中の箇所
+        か
+        のいずれかでしか行を分けてはいけないという制約があるし，
+        和文でも
+          開き括弧の直後
+        や
+          小書きの「っ」や音引き「ー」の直前
+        など，行を分けてはいけない箇所の “規定” がいくらかある．
+        このほか，例えば読点の直後で行を分けた場合は行の途中の読点とは違って
+        読点の後ろに2分アキを入れない，
+        つまりいわゆる “全角幅” の半分の空白を設けないなどといった，
+        行末が揃っているように見せるための “規則” もある．
+        こういった，行を切り分けてよい箇所・いけない箇所の区別と切り分けた場合の特別な処理を
+        \SATySFi;で実装するにあたっては，
+        まず多言語対応の組版を意図して
+        \dfn{Unicode Line Breaking Algorithm} \cite[`unicode-lb`]; に
+        原則従うことにし，
+        特にひとまず和文・欧文の混植を優先して実現することを目的としていたので
+        この和文の組版規則については『\dfn{日本語組版処理の要件}』\cite[`jlreq`];，
+        通称\dfn{JLreq}にできるだけ従って実装した．
+        ハイフネーションについては，やはり偉大な先駆者である\TeX;処理系に倣って
+        \dfn{Liang–Knuthアルゴリズム} \cite[`liang-knuth`]; をもとに実装した．
       }
       +p{
-        \SATySFi;では，行分割の候補となる箇所がインラインボックス列の中に含まれており，
-        そのいずれも
-
+        また実際に切り分ける箇所を決定する処理も自明ではない．
+        前から順に詰められるだけ詰めて切り分けるという単純な貪欲アルゴリズムでは
+        後ろの行が前に比べて過度に間延びして美しく見えないような出力もできてしまうから，
+        “段落全体を見渡してから行分割箇所を決める” ような処理を効率的に行なう必要があるのである．
+        この行分割に関しては，\dfn{Knuth–Plassアルゴリズム} \cite[`knuth-plass`]; と呼ばれる，
+        \TeX;で採用されたものとおおよそ同様の処理を独自に拡張して用いることにした．
+        このアルゴリズムでは，端的に言えば
+        \dfn{最短経路問題}に帰着することで適切な行分割箇所を選んでいる．
+        独自に拡張したのは，\inline-frame{\inline-frame{入れ子になった枠}のついた部分でも
+        途中で行分割できるようにしたこと}に関してである．
+      }
+      +p{
+        Knuth–Plassアルゴリズムに於ける行分割処理の最短経路問題への帰着は
+        シンプルにして巧妙であり，
+        実用上もかなり多くの組版上の要請に応えられるものとなっている\footnote{
+          Knuth自身も
+          “\TeX;’s line-breaking algorithm has proved to be general enough
+          to handle a surprising variety of different applications\;
+          this, in fact, is probably the most interesting aspect of the whole \TeX; system.”
+          と述べている \cite[`TeXbook`];．
+        }．
+        行分割処理を担う機構は，まず段落に組み上げるインラインボックス列を受け取って，
+        その中の行分割候補となる各箇所とボックス列の先頭および末尾を頂点とし，
+        この間に重みつきの辺を張って有向グラフをつくることを考える．
+        この有向グラフは，
+        頂点 ${u} と ${v} の間に
+        「${u} で行分割したあとに ${v} で行分割するとその間にどの程度体裁の悪い行が生じるか」
+        という罰則値を重みとしてもつ辺を張って構築する．
+        この罰則値は
         \listing{
-          * そこで行分割されなかった場合の内容 ${b_0}
-          * そこで行分割された場合に直前の行末に入る内容 ${b_1}
-          * そこで行分割された場合に直後の行頭に入る内容 ${b_2}
-          * そこで行分割された場合に加算されるペナルティ値 ${p}
+          * 単語間の空白があらかじめ決められた自然な長さと比べてどの程度伸縮することになり，
+            それは許容できる伸縮量の基準値に対してどの程度の割合か
+
+          * ${v} それ自体がもつ “行分割してほしくなさ” である
+            \dfnje{\index(`ペナルティチ`){ペナルティ値}}{penalty}
         }%
 
-        からなる4つの情報 ${\tuple{|b_0|b_1|b_2|p|}} をもつ．
-        逆に，これらの情報をもたない箇所では行分割しない\footnote{
-          厳密に言うと例外がある．
-          ブロックボックス列を “段落の一部として埋め込む” 機能を担う
-          \codem{embed-block-breakable}というプリミティヴによって
-          生成されたインラインボックス列は，その直前で必ず行分割される．
+        に基づいて計算される\footnote{
+          あまりにも体裁が悪い行ができるとわかる場合
+          （例えば単語間の空白を自然な長さにすると行長に全く届かないような，
+          短い数単語しか含まない行が生じる場合）
+          はそもそも辺を張らないことによって最短経路を求める計算効率を上げる．
         }．
-        この4つ組を備えた箇所を以降
-        単に\dfnje{
-          \index(`ギョウブンカツコウホカショ`){行分割候補箇所}
-        }{line break opportunity}
-        と呼ぶことにしよう．
-        ペナルティ値は実際の行分割箇所を決定するにあたって参考にされ，
-        この値が大きいほどその候補箇所での行分割が抑制される\footnote{
-          一応（行分割を促進する意図で）負の値を指定することもできるが，
-          現在の実装は負の値が渡されることを想定していないので，
-          行分割が実際に促進される保証はない．
-        }．これについては\ref-subsection(`penalty`);で後述する．
-      }
-      +p{
-        行分割候補箇所は，
-        インラインテキストからインラインボックス列に変換する過程で現れる．
-        この際に，例えば空白文字は
-        ${b_0} が（単語間の空白として適切な程度に）多少伸縮する空白，
-        ${b_1} と ${b_2} が空っぽであるような行分割候補箇所に変換される．
-        “table” という文字列は，
-        ${b_0} が
-        \as-latin-word{\BoxGraphics.roman{|t|a|b|l|e|}}，
-        ${b_1} が
-        \as-latin-word{\BoxGraphics.roman{|t|a|-|}}，
-        ${b_2} が
-        \as-latin-word{\BoxGraphics.roman{|b|l|e|}}
-        であるような行分割候補箇所へと変換される．
-        すなわち，途中で行分割する必要がなければ単に行中で
-        \as-latin-word{\BoxGraphics.roman{|t|a|b|l|e|}}と組まれるように，
-        途中でハイフネーションを行なって分割する方が周辺の要素の並びから望ましいと判断される場合は
-        その行末が\as-latin-word{\BoxGraphics.roman{|t|a|-|}}で
-        次の行頭が\as-latin-word{\BoxGraphics.roman{|b|l|e|}}になるように，
-        それぞれ指定した行分割候補箇所になるのである\footnote{
-          実際のハイフネーション処理はもう少しだけ複雑である．
-          単語中でハイフネーションが可能な箇所は2箇所以上あったりするからだ．
-        }．
-        インラインテキストがどのようにインラインボックス列に変換され，
-        どのように行分割候補箇所が現れるかは，
-        前述のとおり基本的には
-        Unicode Line Breaking Algorithm \cite[`unicode-lb`];
-        と『日本語組版処理の要件』\cite[`jlreq`];に基づいているが，
-        多言語組版を想定して将来的には
-        ユーザやパッケージ開発者が介入して変更できるようにしたいと考えている．
-      }
-      +p{
-        行分割候補箇所はインラインテキストからインラインボックス列への変換過程で生成されるだけでなく，
-        “手動で” 挿入することもできる．これに用いるのがプリミティヴ：
-
-        \val?:(`discretionary`)({discretionary})(Type.(int -->
-          (inline-boxes --> (inline-boxes --> (inline-boxes --> inline-boxes)))));%
-
-        である．使い方は至極単純で，
-        \codem{discretionary \meta{p}
-          \metasub(${0}){ib} \metasub(${1}){ib} \metasub(${2}){ib}}
-        でペナルティ値 ${p} が\codem{\meta{p}}，
-        各 ${b_i} がそれぞれ\codem{\metasub(${i}){ib}}であるような
-        行分割候補箇所が生成される．
-        なお，\codem{discretionary}の引数に渡した\codem{\metasub(${i}){ib}}の中に
-        さらに入れ子で行分割候補箇所が含まれている場合，
-        その箇所では決して行分割されない．つまり，そこでは必ず ${b_0} の内容が選ばれる．
+        そして，この有向グラフ上でボックス列の先頭から末尾までを結ぶ経路のうち，
+        長さ（すなわち各辺の重みの合計）が最小となるものを選ぶと，
+        段落全体として最も端整な行のセットが得られ，
+        その経路をなす頂点で行分割すればよいことがわかる，という仕組みである．
+        前述のとおり，\SATySFi;も\TeX;で採用されたこの巧妙な仕組みを継承して用いている．
+        以下でこの行分割処理を制御するプリミティヴを紹介する．
       }
     >
-    +subsection?:(`penalty`){ペナルティ値}<
-      +p{
-        インラインテキストからインラインボックス列への変換の過程で
-        与えられる各行分割候補箇所のペナルティ値 ${p} は，基本的に
-        \codem{read-inline}の第1引数として渡したテキスト処理文脈に基づいて決定される．
-        単語間空白から変換される行分割候補箇所 ${\tuple{|p|b_0|b_1|b_2|}} は，
-        デフォルトでは\footnote{
-          プリミティヴ
-          \index(`get-initial-context`)?:({\code(`get-intial-context`);}){
-            \codem{get-initial-context}
-          }が返すテキスト処理文脈では，の意．
-        } ${p = 100} であり，${b_1} と ${b_2} は空である．
-        ${b_0} は伸縮する空白であり，\dfnje{\index(`グルー`){グルー}}{glue}と呼ばれる．
-        これについては\ref-subsection(`glue`);で後述する．
-        ${p} はプリミティヴ：
+    +section{行分割に関するプリミティヴ}<
+      +subsection{行分割候補箇所}<
+        +p{
+          \ref-chapter(`advanced-command-definition`);に於いて，
+          行分割処理そのものを担うプリミティヴが
 
-        \val?:(`set-word-break-penalty`)({set-word-break-penalty})%
-          (Type.(int --> (context --> context)));%
+          \val?(index = `line-break`)({line-break})(Type.(bool --> (bool -->
+            (context --> (inline-boxes --> block-boxes)))));%
 
-        により変更できる．すなわち，
-        テキスト処理文脈\codem{\meta{ctx}}と
-        単語間空白の行分割候補箇所に対して設定したいペナルティ値\codem{\meta{p}}に対して
-        \codem{set-word-break-penalty \meta{p} \meta{ctx}}で
-        ペナルティ値が\codem{\meta{p}}に更新されたテキスト処理文脈が返される．
-        ${b_1} と ${b_2} も変更でき，
+          であることはすでに\ref-chapter(`advanced-command-definition`);で紹介したが，
+          分割される箇所の候補がどのように決定され，
+          その処理にユーザやパッケージ開発者がどのように介入できるかについてはまだ触れていなかった．
+          これについて以下で少し解説する．
+          本章のほかに，行分割の仕組みを扱っているわかりやすい文献としては
+          \cite[`Kuroki2015`, `TeXbyTopic`];などがあるので是非参照されたい．
+        }
+        +p{
+          \SATySFi;では，行分割の候補となる箇所がインラインボックス列の中に含まれており，
+          そのいずれも
 
-        \val?:(`set-every-word-break`)({set-every-word-break})%
-          (Type.(inline-boxes --> (inline-boxes --> (context --> context))));%
+          \listing{
+            * そこで行分割されなかった場合の内容 ${b_0}
+            * そこで行分割された場合に直前の行末に入る内容 ${b_1}
+            * そこで行分割された場合に直後の行頭に入る内容 ${b_2}
+            * そこで行分割された場合に加算されるペナルティ値 ${p}
+          }%
 
-        によって行なう．すなわち
-        \codem{set-every-word-break \metasub(${1}){ib} \metasub(${2}){ib}}
-        で\codem{\metasub(${i}){ib}}をそれぞれ
-        単語間空白の行分割候補箇所の ${b_i} に設定する．
-        現在単語間空白の ${b_1} と ${b_2} に設定されている内容を取得するのは
+          からなる4つの情報 ${\tuple{|b_0|b_1|b_2|p|}} をもつ．
+          逆に，これらの情報をもたない箇所では行分割しない\footnote{
+            厳密に言うと例外がある．
+            ブロックボックス列を “段落の一部として埋め込む” 機能を担う
+            \codem{embed-block-breakable}というプリミティヴによって
+            生成されたインラインボックス列は，その直前で必ず行分割される．
+          }．
+          この4つ組を備えた箇所を以降
+          単に\dfnje{
+            \index(`ギョウブンカツコウホカショ`){行分割候補箇所}
+          }{line break opportunity}
+          と呼ぶことにしよう．
+          ペナルティ値は実際の行分割箇所を決定するにあたって参考にされ，
+          この値が大きいほどその候補箇所での行分割が抑制される\footnote{
+            一応（行分割を促進する意図で）負の値を指定することもできるが，
+            現在の実装は負の値が渡されることを想定していないので，
+            行分割が実際に促進される保証はない．
+          }．これについては\ref-subsection(`penalty`);で後述する．
+        }
+        +p{
+          行分割候補箇所は，
+          インラインテキストからインラインボックス列に変換する過程で現れる．
+          この際に，例えば空白文字は
+          ${b_0} が（単語間の空白として適切な程度に）多少伸縮する空白，
+          ${b_1} と ${b_2} が空っぽであるような行分割候補箇所に変換される．
+          “table” という文字列は，
+          ${b_0} が
+          \as-latin-word{\BoxGraphics.roman{|t|a|b|l|e|}}，
+          ${b_1} が
+          \as-latin-word{\BoxGraphics.roman{|t|a|-|}}，
+          ${b_2} が
+          \as-latin-word{\BoxGraphics.roman{|b|l|e|}}
+          であるような行分割候補箇所へと変換される．
+          すなわち，途中で行分割する必要がなければ単に行中で
+          \as-latin-word{\BoxGraphics.roman{|t|a|b|l|e|}}と組まれるように，
+          途中でハイフネーションを行なって分割する方が周辺の要素の並びから望ましいと判断される場合は
+          その行末が\as-latin-word{\BoxGraphics.roman{|t|a|-|}}で
+          次の行頭が\as-latin-word{\BoxGraphics.roman{|b|l|e|}}になるように，
+          それぞれ指定した行分割候補箇所になるのである\footnote{
+            実際のハイフネーション処理はもう少しだけ複雑である．
+            単語中でハイフネーションが可能な箇所は2箇所以上あったりするからだ．
+          }．
+          インラインテキストがどのようにインラインボックス列に変換され，
+          どのように行分割候補箇所が現れるかは，
+          前述のとおり基本的には
+          Unicode Line Breaking Algorithm \cite[`unicode-lb`];
+          と『日本語組版処理の要件』\cite[`jlreq`];に基づいているが，
+          多言語組版を想定して将来的には
+          ユーザやパッケージ開発者が介入して変更できるようにしたいと考えている．
+        }
+        +p{
+          行分割候補箇所はインラインテキストからインラインボックス列への変換過程で生成されるだけでなく，
+          “手動で” 挿入することもできる．これに用いるのがプリミティヴ：
 
-        \val?:(`get-every-word-break`)({get-every-word-break})%
-          (Type.(context --> product [inline-boxes; inline-boxes]));%
+          \val?(index = `discretionary`)({discretionary})(Type.(int -->
+            (inline-boxes --> (inline-boxes --> (inline-boxes --> inline-boxes)))));%
 
-        による．
-      }
-      +example?:(`french-q`){
-        フランス語の表記の或る流儀では，
-        引用符であるギュメに囲まれた部分が複数行に亘って続く場合，
-        2行目以降の先頭にも開く側の引用符を置く．
-        このような処理を自動でやってくれる引用符のコマンド，
-        すなわち以下のような記述と組版結果を実現するような
-        コマンド\codem{\\q}を定義したい（本文は \cite[`omega`]; より）：
+          である．使い方は至極単純で，
+          \codem{discretionary \meta{p}
+            \metasub(${0}){ib} \metasub(${1}){ib} \metasub(${2}){ib}}
+          でペナルティ値 ${p} が\codem{\meta{p}}，
+          各 ${b_i} がそれぞれ\codem{\metasub(${i}){ib}}であるような
+          行分割候補箇所が生成される．
+          なお，\codem{discretionary}の引数に渡した\codem{\metasub(${i}){ib}}の中に
+          さらに入れ子で行分割候補箇所が含まれている場合，
+          その箇所では決して行分割されない．つまり，そこでは必ず ${b_0} の内容が選ばれる．
+        }
+      >
+      +subsection?(label = `penalty`)({ペナルティ値})<
+        +p{
+          インラインテキストからインラインボックス列への変換の過程で
+          与えられる各行分割候補箇所のペナルティ値 ${p} は，基本的に
+          \codem{read-inline}の第1引数として渡したテキスト処理文脈に基づいて決定される．
+          単語間空白から変換される行分割候補箇所 ${\tuple{|p|b_0|b_1|b_2|}} は，
+          デフォルトでは\footnote{
+            プリミティヴ
+            \index?(it = {\code(`get-intial-context`);})(`get-initial-context`){
+              \codem{get-initial-context}
+            }が返すテキスト処理文脈では，の意．
+          } ${p = 100} であり，${b_1} と ${b_2} は空である．
+          ${b_0} は伸縮する空白であり，\dfnje{\index(`グルー`){グルー}}{glue}と呼ばれる．
+          これについては\ref-subsection(`glue`);で後述する．
+          ${p} はプリミティヴ：
 
-        \d-code-and-block(```
-          +p{
-            \q{
-              The original problem to be solved was
-              for fine French typesetting,
-              in which guillemets are placed
-              running down the left side of a paragraph,
-              as in this paragraph,
-              so long as material is being quoted.
+          \val?(index = `set-word-break-penalty`)({set-word-break-penalty})%
+            (Type.(int --> (context --> context)));%
+
+          により変更できる．すなわち，
+          テキスト処理文脈\codem{\meta{ctx}}と
+          単語間空白の行分割候補箇所に対して設定したいペナルティ値\codem{\meta{p}}に対して
+          \codem{set-word-break-penalty \meta{p} \meta{ctx}}で
+          ペナルティ値が\codem{\meta{p}}に更新されたテキスト処理文脈が返される．
+          ${b_1} と ${b_2} も変更でき，
+
+          \val?(index = `set-every-word-break`)({set-every-word-break})%
+            (Type.(inline-boxes --> (inline-boxes --> (context --> context))));%
+
+          によって行なう．すなわち
+          \codem{set-every-word-break \metasub(${1}){ib} \metasub(${2}){ib}}
+          で\codem{\metasub(${i}){ib}}をそれぞれ
+          単語間空白の行分割候補箇所の ${b_i} に設定する．
+          現在単語間空白の ${b_1} と ${b_2} に設定されている内容を取得するのは
+
+          \val?(index = `get-every-word-break`)({get-every-word-break})%
+            (Type.(context --> product [inline-boxes, inline-boxes]));%
+
+          による．
+        }
+        +example?(label = `french-q`)({
+          フランス語の表記の或る流儀では，
+          引用符であるギュメに囲まれた部分が複数行に亘って続く場合，
+          2行目以降の先頭にも開く側の引用符を置く．
+          このような処理を自動でやってくれる引用符のコマンド，
+          すなわち以下のような記述と組版結果を実現するような
+          コマンド\codem{\\q}を定義したい（本文は \cite[`omega`]; より）：
+
+          \d-code-and-block(```
+            +p{
+              \q{
+                The original problem to be solved was
+                for fine French typesetting,
+                in which guillemets are placed
+                running down the left side of a paragraph,
+                as in this paragraph,
+                so long as material is being quoted.
+              }
+              Since \TeX; breaks paragraphs in arbitrary places,
+              it was impossible to develop a robust macro package
+              that could, in a single pass, place the guillemets
+              in the right positions.
             }
-            Since \TeX; breaks paragraphs in arbitrary places,
-            it was impossible to develop a robust macro package
-            that could, in a single pass, place the guillemets
-            in the right positions.
-          }
-        ```)(open Sample in '<
-          +p-alph{
-            \q{
-              The original problem to be solved was
-              for fine French typesetting,
-              in which guillemets are placed
-              running down the left side of a paragraph,
-              as in this paragraph,
-              so long as material is being quoted.
+          ```)(let open Sample in '<
+            +p-alph{
+              \q{
+                The original problem to be solved was
+                for fine French typesetting,
+                in which guillemets are placed
+                running down the left side of a paragraph,
+                as in this paragraph,
+                so long as material is being quoted.
+              }
+              Since \TeX; breaks paragraphs in arbitrary places,
+              it was impossible to develop a robust macro package
+              that could, in a single pass, place the guillemets
+              in the right positions.
             }
-            Since \TeX; breaks paragraphs in arbitrary places,
-            it was impossible to develop a robust macro package
-            that could, in a single pass, place the guillemets
-            in the right positions.
-          }
-        >);%
+          >);%
 
-        これは\codem{set-every-word-break}を使えばおおよそ実現できる：
+          これは\codem{set-every-word-break}を使えばおおよそ実現できる：
 
-        \d-code(```
-          let-inline ctx \q inner =
-            let ib-after = read-inline ctx {«\ } in
-            let ctxq =
-              ctx |> set-every-word-break inline-nil ib-after
-            in
-              read-inline ctxq {« #inner; »}
-        ```);%
+          \d-code(```
+            let-inline ctx \q inner =
+              let ib-after = read-inline ctx {«\ } in
+              let ctxq =
+                ctx |> set-every-word-break inline-nil ib-after
+              in
+                read-inline ctxq {« #inner; »}
+          ```);%
 
-        要するに「単語間空白で行分割された場合は次の行頭にギュメの開く側をつける」という指示を
-        ギュメの内側のインラインテキストを変換するときに使うテキスト処理文脈に与えることで
-        所望の処理を実現している．
-        ただし，これはハイフネーションで行分割された場合には残念ながら対応できていない．
-        現在の\SATySFi;はまだハイフネーション時に挿入される
-        文字ないしボックス列を変更するプリミティヴを提供していないためである\footnote{
-          実装は簡単だが，互換性を損なう変更であるため未実装となっている．
-          互換性のない更新をまとめて行なう際に追加する予定である．
-        }．
-      }
-      +p{
-        ハイフネーションによるペナルティもテキスト処理文脈が保持しており，
+          要するに「単語間空白で行分割された場合は次の行頭にギュメの開く側をつける」という指示を
+          ギュメの内側のインラインテキストを変換するときに使うテキスト処理文脈に与えることで
+          所望の処理を実現している．
+          ただし，これはハイフネーションで行分割された場合には残念ながら対応できていない．
+          現在の\SATySFi;はまだハイフネーション時に挿入される
+          文字ないしボックス列を変更するプリミティヴを提供していないためである\footnote{
+            実装は簡単だが，互換性を損なう変更であるため未実装となっている．
+            互換性のない更新をまとめて行なう際に追加する予定である．
+          }．
+        });
+        +p{
+          ハイフネーションによるペナルティもテキスト処理文脈が保持しており，
 
-        \val?:(`set-hyphen-penalty`)({set-hyphen-penalty})%
-          (Type.(int --> (context --> context)));%
+          \val?(index = `set-hyphen-penalty`)({set-hyphen-penalty})%
+            (Type.(int --> (context --> context)));%
 
-        によって変更できる．
-        デフォルトでは ${100} に設定されている．
-      }
-    >
-    +subsection?:(`glue`){グルー}<
-      +p{
-        行分割の際，単語間の空白や和文の文字の間などの箇所は
-        両端を揃えるために多少伸縮するのであった．
-        これは\dfnje{\index(`グルー`){グルー}}{glue}と呼ばれる仕組みによって実装されている．
-        グルーは
+          によって変更できる．
+          デフォルトでは ${100} に設定されている．
+        }
+      >
+      +subsection?(label = `glue`)({グルー})<
+        +p{
+          行分割の際，単語間の空白や和文の文字の間などの箇所は
+          両端を揃えるために多少伸縮するのであった．
+          これは\dfnje{\index(`グルー`){グルー}}{glue}と呼ばれる仕組みによって実装されている．
+          グルーは
 
-        \listing{
-          * 自然な長さ ${l_0}
-          * 収縮の基準となる非負の長さ ${l_1}
-          * 伸長の基準となる非負の長さ ${l_2}
-        }%
-
-        の3つの情報 ${\tuple{|l_0|l_1|l_2|}} からなっている．
-        インラインテキストからインラインボックス列へ変換される過程で
-        単語間空白などから生じるが，
-        プリミティヴ：
-
-        \val?:(`inline-glue`)({inline-glue})%
-          (Type.(length --> (length --> (length --> inline-boxes))));%
-
-        を用いて “手づくりする” こともできる．すなわち
-        \codem{inline-glue
-          \metasub(${0}){l} \metasub(${1}){l} \metasub(${2}){l}}
-        で各 ${l_i} が\codem{\metasub(${i}){l}}のグルーが返される．
-        なお，段落先頭の字下げなど伸縮せず一定の長さのものは
-        \dfnje{スキップ}{skip}と呼ばれ\footnote{
-          \dfnje{カーン}{kern}と呼ばれることの方が一般的かもしれないが，
-          現在の\SATySFi;では慣習的にスキップと呼んでいる．
-        }，プリミティヴ：
-
-        \val?:(`inline-skip`)({inline-skip})%
-          (Type.(length --> inline-boxes));%
-
-        でつくることができる\footnote{
-          生成されるインラインボックス列の内部表現が異なるものの，
-          振舞いの上では\codem{inline-skip \meta{l}}は
-          \codem{inline-glue \meta{l} 0pt 0pt}と等価である．
-          このため，\codem{inline-skip}は
-          将来的にプリミティヴからパッケージで定義される函数へと “降格” するかもしれない．
-        }．
-      }
-      +p{
-        インラインテキストがインラインボックス列に変換される過程で
-        単語間空白がどのようなグルーに変換されるかは，
-        \codem{read-inline}に第1引数として渡されたテキスト処理文脈が保持している
-        フォントサイズ ${s} および
-        浮動小数点数のパラメータ ${r_0}，${r_1}，${r_2} によって決まり，
-        それぞれ ${l_i \defeq r_i s} で定められる．
-        デフォルトでは ${r_0 = 0.33}，${r_1 = 0.08}，${r_2 = 0.16}
-        になっているが，プリミティヴ：
-
-        \val?:(`set-space-ratio`)({set-space-ratio})%
-          (Type.(float --> (float --> (float --> (context --> context)))));%
-
-        によって変更できる．すなわち
-        \codem{set-space-ratio
-          \metasub(${0}){r} \metasub(${1}){r} \metasub(${2}){r} \meta{ctx}}
-        でテキスト処理文脈\codem{\meta{ctx}}を
-        各 ${r_i} が\codem{\metasub(${i}){r}}になるように更新したものを返す．
-      }
-      +p{
-        すでに\ref-chapter(`basic-command-definition`);で登場したが，
-        \codem{inline-fil}も機能上はグルーの変種である．
-        おおらかには，罰則なしに任意の長さまで伸ばすことのできる，自然長 ${0}，縮み許容量 ${0}
-        のグルーと捉えられるのである．
-        行分割処理にかけるインラインボックス列の末尾に\codem{inline-fil}をくっつけることで
-        “行の途中でテキストが終わってよいこと” を表現できたり，
-        また1行になるとわかっているインラインボックス列の前後に
-        \codem{inline-fil}を1つずつ附加して\codem{line-break}に渡すことで
-        中央揃えの行をつくることができたりする．
-        では，複数行になるインラインボックス列を適切に切り分けて
-        中央揃えにするにはどうすればよいだろうか？
-        \quad;これは\codem{set-every-word-break}と\codem{inline-fil}を使えば
-        おおよそ実現できる\footnote{
-          「おおよそ」というのは「現状の\SATySFi;だと，単語間で行分割された場合は問題ないが，
-          ハイフネーション箇所で行分割されたときには残念ながら対処できない」ことを指している．
-          これは\ref-example(`french-q`);で言及した問題と同様である．
-        }ので，考えてみてほしい．
-      }
-    >
-    +section{ブロック方向の長さの制御}<
-      +p{
-        標準の行送りや行間の最小の長さなどを指定する機能を紹介する．
-        \dfn{行送り}とは段落中に於けるベースラインから次のベースラインまでの段落方向の距離であり，
-        行の内容の深さや高さが邪魔しない限り一定の行送りで行が並べられる．
-        行間とは行の下端とその次の行の上端との距離であり，
-        これには許容する最小の長さ ${t} を決めておく．
-        これは行の深さを ${d}，次の行の高さを ${h} としたとき，
-        その行から次の行への行送りを少なくとも ${d + t + h} にするのに使う．
-        つまり，或る行の深さと次の行の高さの和が長すぎて
-        標準の行送りでは詰まりすぎたり重なってしまったりするのを防ぐ意図でこの ${t} を設定する．
-        これらの情報もやはりテキスト処理文脈が保持しており，
-        \codem{line-break}に第3引数として与えたものから取り出して使われる．
-        これらの値を変更するプリミティヴは以下のとおり：
-
-        \val-explain({set-leading})(Type.(length --> (context --> context))) {
-          標準の行送りを第1引数の値に設定するよう更新したテキスト処理文脈を返す．
-        }%
-
-        \val-explain({set-min-gap-of-lines})(Type.(length --> (context --> context))) {
-          行間の最小値を第1引数の値に設定するよう更新したテキスト処理文脈を返す．
-        }%
-
-        インライン方向のスペーシングの指定は基本的に
-        文字サイズに対する割合で行ない，
-        文字サイズだけ変更すればそれに伴って自動で拡大・縮小されたのだが，
-        ブロック方向に関する長さの指定は絶対的な長さで指定するインターフェイスであることに注意．
-      }
-      +p{
-        また，\codem{line-break}が返すひとまとまりの段落には上下に\dfnje{マージン}{margin}という部分がついている．
-        これはCSSに於けるマージンと類似したもので，ブロック方向の長さを持っている．
-        マージン同士が隣り合うと，より長い側の長さでブロック方向のスペースがつくられる．
-        つまり，マージンとは “隣り合うものに少なくともこれだけ離れていてほしいという距離” である．
-        マージンの大きさはテキスト処理文脈が保持しており，
-        \codem{line-break}に渡されたテキスト処理文脈から取り出して使われる\footnote{
-          \ref-chapter(`advanced-command-definition`);でも言及したが，
-          段落の前後で改ページしてよいか否かの情報は\codem{line-break}の引数として与えておきながら
-          マージンの長さはテキスト処理文脈が保持しているということについては
-          やや一貫性に乏しいインターフェイスにしてしまったと感じている．
-          将来的に非互換な変更でこれに関して整理することを検討している．
-        }．
-        マージンを変更するプリミティヴは次のとおり：
-
-        \val-explain({set-paragraph-margin})(Type.(length --> (length --> (context --> context)))) {
-          \codem{\meta{ctx} \|\> set-paragraph-margin \metasub(${1}){l} \metasub(${2}){l}}で
-          段落の上のマージンを\codem{\metasub(${1}){l}}に，
-          段落の下のマージンを\codem{\metasub(${2}){l}}にするように
-          設定を更新したテキスト処理文脈を返す．
-        }%
-      }
-    >
-    +section{ブロックボックス列の行分割内容への挿入}<
-      +p{
-        \ref-chapter(`getting-started`);の説明に於いて，直観的には
-        インラインテキストやインラインボックス列が “文字が進む方向に連なるデータ”，
-        ブロックテキストやブロックボックス列が “段落が進む方向に連なるデータ”
-        であるという旨の説明をした．
-        しかし実際には箇条書きや別行立て数式など
-        “段落の進む方向に連なるデータ” としか思えないものが
-        \codem{\\listing}や\codem{\\align}などのインラインコマンドの適用で書けた．
-        これらの内容は途中でページ分割すらできるから，
-        “大きな1文字になっている” という言い逃れもできないはずだ．
-        \ref-chapter(`getting-started`);ではこの話題を避けていたのだが，
-        そろそろ読者もこの\SATySFi;の矛盾した態度には
-        疑問を呈さざるを得ないのではなかろうか．
-        実際，この “矛盾” を実現するプリミティヴが用意されている：
-
-        \val({embed-block-breakable})%
-          (Type.(context --> (block-boxes --> inline-boxes)));%
-
-        \codem{embed-block-breakable \meta{ctx} \meta{bb}}
-        でブロックボックス列\codem{\meta{bb}}を
-        途中でページ分割可能な部分としてインラインボックス列に擬態させる．
-        つまり，\codem{embed-block-breakable}の返り値の正体は
-        ブロックボックスが擬態した特殊なインラインボックス列である．
-        これを含むインラインボックス列が\codem{line-break}に渡されると，
-        行分割処理を担う機構は
-        この擬態したブロックボックス列の直前では
-        行長の最後まできっちり使い切るように行分割する．
-        そして綺麗に揃った状態でブロックボックス列になった下端に，
-        ヴェールを被って擬態していたブロックボックス列をヴェールの中から取り出し，
-        そのままそこにブロックボックス列として
-        （\codem{+++}による結合と同じ具合に）くっつける．
-        そしてこの擬態ブロックボックスより後方の内容は
-        また左端から通常の要領で行分割され，
-        そしてその結果できた，
-        （左端から始めたので当然）綺麗に上端が揃ったブロックボックス列を，
-        擬態ブロックボックス列由来の部分の後ろにやはりくっつけるのである．
-        こうした経緯で，インラインボックス列中にヴェールを被って潜んでいたブロックボックス列が
-        途中でページ分割可能な状態のままシレッと行分割中に挿入されるのだ．
-      }
-      +p{
-        実際，\pkg{itemize}パッケージの
-        \codem{+listing}と\codem{\\listing}の定義の
-        概要部分だけ抜き出して簡略化した以下のような定義を見ると，
-
-        \d-code(```
-          let listing ctx (Item(_, itmzs)) =
-            let bbs = List.map (listing-item ctx 0) itmzs in
-              block-skip item-gap-outer
-                +++ (List.fold-left (+++) block-nil bbs)
-                +++ block-skip item-gap-outer
-
-          let-block ctx +listing item = listing ctx item
-
-          let-inline ctx \listing item =
-            inline-fil ++ embed-block-breakable ctx (listing ctx item)
-        ```);%
-
-        と両者に共通の補助函数\codem{listring} : \type(Type.(context --> (itemize --> block-boxes)));
-        を呼んでおり，\codem{embed-block-breakable}を通しているかくらいしか違いがない．
-        ただし，ここで手前についている\codem{inline-fil}は重要だ．
-        これは\ref-chapter(`advanced-command-definition`);での
-        \codem{+p}の定義で末尾に\codem{inline-fil}を結合させたのと同様の理由による．
-        また
-
-        \val({block-skip})(Type.(length --> block-boxes));%
-
-        は受け取った長さの “ブロック方向の空白” を返すプリミティヴである．
-      }
-    >
-    +section{長さの取得に関するプリミティヴ}<
-      +p{
-        文字幅などを取得する便利なプリミティヴがいくつかある：
-
-        \val-explain({get-natural-metrics})%
-          (Type.(inline-boxes --> product [length; length; length])) {
-            与えられたインラインボックス列を行分割せずに1行で組んだ時の
-            自然な長さ，高さ，深さの3つ組を返す．
+          \listing{
+            * 自然な長さ ${l_0}
+            * 収縮の基準となる非負の長さ ${l_1}
+            * 伸長の基準となる非負の長さ ${l_2}
           }%
 
-        \val-explain({get-natural-length})%
-          (Type.(block-boxes --> length)) {
-            与えられたブロックボックス列のブロック方向の長さを返す．
+          の3つの情報 ${\tuple{|l_0|l_1|l_2|}} からなっている．
+          インラインテキストからインラインボックス列へ変換される過程で
+          単語間空白などから生じるが，
+          プリミティヴ：
+
+          \val?(index = `inline-glue`)({inline-glue})%
+            (Type.(length --> (length --> (length --> inline-boxes))));%
+
+          を用いて “手づくりする” こともできる．すなわち
+          \codem{inline-glue
+            \metasub(${0}){l} \metasub(${1}){l} \metasub(${2}){l}}
+          で各 ${l_i} が\codem{\metasub(${i}){l}}のグルーが返される．
+          なお，段落先頭の字下げなど伸縮せず一定の長さのものは
+          \dfnje{スキップ}{skip}と呼ばれ\footnote{
+            \dfnje{カーン}{kern}と呼ばれることの方が一般的かもしれないが，
+            現在の\SATySFi;では慣習的にスキップと呼んでいる．
+          }，プリミティヴ：
+
+          \val?(index = `inline-skip`)({inline-skip})%
+            (Type.(length --> inline-boxes));%
+
+          でつくることができる\footnote{
+            生成されるインラインボックス列の内部表現が異なるものの，
+            振舞いの上では\codem{inline-skip \meta{l}}は
+            \codem{inline-glue \meta{l} 0pt 0pt}と等価である．
+            このため，\codem{inline-skip}は
+            将来的にプリミティヴからパッケージで定義される函数へと “降格” するかもしれない．
+          }．
+        }
+        +p{
+          インラインテキストがインラインボックス列に変換される過程で
+          単語間空白がどのようなグルーに変換されるかは，
+          \codem{read-inline}に第1引数として渡されたテキスト処理文脈が保持している
+          フォントサイズ ${s} および
+          浮動小数点数のパラメータ ${r_0}，${r_1}，${r_2} によって決まり，
+          それぞれ ${l_i \defeq r_i s} で定められる．
+          デフォルトでは ${r_0 = 0.33}，${r_1 = 0.08}，${r_2 = 0.16}
+          になっているが，プリミティヴ：
+
+          \val?(index = `set-space-ratio`)({set-space-ratio})%
+            (Type.(float --> (float --> (float --> (context --> context)))));%
+
+          によって変更できる．すなわち
+          \codem{set-space-ratio
+            \metasub(${0}){r} \metasub(${1}){r} \metasub(${2}){r} \meta{ctx}}
+          でテキスト処理文脈\codem{\meta{ctx}}を
+          各 ${r_i} が\codem{\metasub(${i}){r}}になるように更新したものを返す．
+        }
+        +p{
+          すでに\ref-chapter(`basic-command-definition`);で登場したが，
+          \codem{inline-fil}も機能上はグルーの変種である．
+          おおらかには，罰則なしに任意の長さまで伸ばすことのできる，自然長 ${0}，縮み許容量 ${0}
+          のグルーと捉えられるのである．
+          行分割処理にかけるインラインボックス列の末尾に\codem{inline-fil}をくっつけることで
+          “行の途中でテキストが終わってよいこと” を表現できたり，
+          また1行になるとわかっているインラインボックス列の前後に
+          \codem{inline-fil}を1つずつ附加して\codem{line-break}に渡すことで
+          中央揃えの行をつくることができたりする．
+          では，複数行になるインラインボックス列を適切に切り分けて
+          中央揃えにするにはどうすればよいだろうか？
+          \quad;これは\codem{set-every-word-break}と\codem{inline-fil}を使えば
+          おおよそ実現できる\footnote{
+            「おおよそ」というのは「現状の\SATySFi;だと，単語間で行分割された場合は問題ないが，
+            ハイフネーション箇所で行分割されたときには残念ながら対処できない」ことを指している．
+            これは\ref-example(`french-q`);で言及した問題と同様である．
+          }ので，考えてみてほしい．
+        }
+      >
+      +section{ブロック方向の長さの制御}<
+        +p{
+          標準の行送りや行間の最小の長さなどを指定する機能を紹介する．
+          \dfn{行送り}とは段落中に於けるベースラインから次のベースラインまでの段落方向の距離であり，
+          行の内容の深さや高さが邪魔しない限り一定の行送りで行が並べられる．
+          行間とは行の下端とその次の行の上端との距離であり，
+          これには許容する最小の長さ ${t} を決めておく．
+          これは行の深さを ${d}，次の行の高さを ${h} としたとき，
+          その行から次の行への行送りを少なくとも ${d + t + h} にするのに使う．
+          つまり，或る行の深さと次の行の高さの和が長すぎて
+          標準の行送りでは詰まりすぎたり重なってしまったりするのを防ぐ意図でこの ${t} を設定する．
+          これらの情報もやはりテキスト処理文脈が保持しており，
+          \codem{line-break}に第3引数として与えたものから取り出して使われる．
+          これらの値を変更するプリミティヴは以下のとおり：
+
+          \val-explain({set-leading})(Type.(length --> (context --> context))) {
+            標準の行送りを第1引数の値に設定するよう更新したテキスト処理文脈を返す．
           }%
 
-        \val-explain({get-text-width})%
-          (Type.(context --> length)) {
-            テキスト処理文脈に格納されている行長を取り出す．
+          \val-explain({set-min-gap-of-lines})(Type.(length --> (context --> context))) {
+            行間の最小値を第1引数の値に設定するよう更新したテキスト処理文脈を返す．
           }%
-      }
+
+          インライン方向のスペーシングの指定は基本的に
+          文字サイズに対する割合で行ない，
+          文字サイズだけ変更すればそれに伴って自動で拡大・縮小されたのだが，
+          ブロック方向に関する長さの指定は絶対的な長さで指定するインターフェイスであることに注意．
+        }
+        +p{
+          また，\codem{line-break}が返すひとまとまりの段落には上下に\dfnje{マージン}{margin}という部分がついている．
+          これはCSSに於けるマージンと類似したもので，ブロック方向の長さを持っている．
+          マージン同士が隣り合うと，より長い側の長さでブロック方向のスペースがつくられる．
+          つまり，マージンとは “隣り合うものに少なくともこれだけ離れていてほしいという距離” である．
+          マージンの大きさはテキスト処理文脈が保持しており，
+          \codem{line-break}に渡されたテキスト処理文脈から取り出して使われる\footnote{
+            \ref-chapter(`advanced-command-definition`);でも言及したが，
+            段落の前後で改ページしてよいか否かの情報は\codem{line-break}の引数として与えておきながら
+            マージンの長さはテキスト処理文脈が保持しているということについては
+            やや一貫性に乏しいインターフェイスにしてしまったと感じている．
+            将来的に非互換な変更でこれに関して整理することを検討している．
+          }．
+          マージンを変更するプリミティヴは次のとおり：
+
+          \val-explain({set-paragraph-margin})(Type.(length --> (length --> (context --> context)))) {
+            \codem{\meta{ctx} \|\> set-paragraph-margin \metasub(${1}){l} \metasub(${2}){l}}で
+            段落の上のマージンを\codem{\metasub(${1}){l}}に，
+            段落の下のマージンを\codem{\metasub(${2}){l}}にするように
+            設定を更新したテキスト処理文脈を返す．
+          }%
+        }
+      >
+      +section{ブロックボックス列の行分割内容への挿入}<
+        +p{
+          \ref-chapter(`getting-started`);の説明に於いて，直観的には
+          インラインテキストやインラインボックス列が “文字が進む方向に連なるデータ”，
+          ブロックテキストやブロックボックス列が “段落が進む方向に連なるデータ”
+          であるという旨の説明をした．
+          しかし実際には箇条書きや別行立て数式など
+          “段落の進む方向に連なるデータ” としか思えないものが
+          \codem{\\listing}や\codem{\\align}などのインラインコマンドの適用で書けた．
+          これらの内容は途中でページ分割すらできるから，
+          “大きな1文字になっている” という言い逃れもできないはずだ．
+          \ref-chapter(`getting-started`);ではこの話題を避けていたのだが，
+          そろそろ読者もこの\SATySFi;の矛盾した態度には
+          疑問を呈さざるを得ないのではなかろうか．
+          実際，この “矛盾” を実現するプリミティヴが用意されている：
+
+          \val({embed-block-breakable})%
+            (Type.(context --> (block-boxes --> inline-boxes)));%
+
+          \codem{embed-block-breakable \meta{ctx} \meta{bb}}
+          でブロックボックス列\codem{\meta{bb}}を
+          途中でページ分割可能な部分としてインラインボックス列に擬態させる．
+          つまり，\codem{embed-block-breakable}の返り値の正体は
+          ブロックボックスが擬態した特殊なインラインボックス列である．
+          これを含むインラインボックス列が\codem{line-break}に渡されると，
+          行分割処理を担う機構は
+          この擬態したブロックボックス列の直前では
+          行長の最後まできっちり使い切るように行分割する．
+          そして綺麗に揃った状態でブロックボックス列になった下端に，
+          ヴェールを被って擬態していたブロックボックス列をヴェールの中から取り出し，
+          そのままそこにブロックボックス列として
+          （\codem{+++}による結合と同じ具合に）くっつける．
+          そしてこの擬態ブロックボックスより後方の内容は
+          また左端から通常の要領で行分割され，
+          そしてその結果できた，
+          （左端から始めたので当然）綺麗に上端が揃ったブロックボックス列を，
+          擬態ブロックボックス列由来の部分の後ろにやはりくっつけるのである．
+          こうした経緯で，インラインボックス列中にヴェールを被って潜んでいたブロックボックス列が
+          途中でページ分割可能な状態のままシレッと行分割中に挿入されるのだ．
+        }
+        +p{
+          実際，\pkg{itemize}パッケージの
+          \codem{+listing}と\codem{\\listing}の定義の
+          概要部分だけ抜き出して簡略化した以下のような定義を見ると，
+
+          \d-code(```
+            let listing ctx (Item(_, itmzs)) =
+              let bbs = List.map (listing-item ctx 0) itmzs in
+                block-skip item-gap-outer
+                  +++ (List.fold-left (+++) block-nil bbs)
+                  +++ block-skip item-gap-outer
+
+            let-block ctx +listing item = listing ctx item
+
+            let-inline ctx \listing item =
+              inline-fil ++ embed-block-breakable ctx (listing ctx item)
+          ```);%
+
+          と両者に共通の補助函数\codem{listring} : \type(Type.(context --> (itemize --> block-boxes)));
+          を呼んでおり，\codem{embed-block-breakable}を通しているかくらいしか違いがない．
+          ただし，ここで手前についている\codem{inline-fil}は重要だ．
+          これは\ref-chapter(`advanced-command-definition`);での
+          \codem{+p}の定義で末尾に\codem{inline-fil}を結合させたのと同様の理由による．
+          また
+
+          \val({block-skip})(Type.(length --> block-boxes));%
+
+          は受け取った長さの “ブロック方向の空白” を返すプリミティヴである．
+        }
+      >
+      +section{長さの取得に関するプリミティヴ}<
+        +p{
+          文字幅などを取得する便利なプリミティヴがいくつかある：
+
+          \val-explain({get-natural-metrics})%
+            (Type.(inline-boxes --> product [length, length, length])) {
+              与えられたインラインボックス列を行分割せずに1行で組んだ時の
+              自然な長さ，高さ，深さの3つ組を返す．
+            }%
+
+          \val-explain({get-natural-length})%
+            (Type.(block-boxes --> length)) {
+              与えられたブロックボックス列のブロック方向の長さを返す．
+            }%
+
+          \val-explain({get-text-width})%
+            (Type.(context --> length)) {
+              テキスト処理文脈に格納されている行長を取り出す．
+            }%
+        }
+      >
     >
   >
->
+end

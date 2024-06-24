@@ -1,40 +1,72 @@
 % -*- coding: utf-8 -*-
-@import: settings
-@import: top-page
-@import: preface
-@import: introduction
-@import: getting-started
-@import: alias-command-definition
-@import: programming
-@import: overall
-@import: advanced-command-definition
-@import: line-breaking
-@import: system-and-config
-@import: typography
-@import: graphics
-@import: cross-reference
-@import: page-breaking
-@import: future-work
-@import: specification
-@import: bib
+#[config (|
+  registries = [
+    (|
+      name = `default`,
+      remote =
+        Git(|
+          url = `https://github.com/SATySFi/default-registry`,
+          branch = `format-1`,
+        |)
+    |)
+  ],
+  dependencies = [
+    (| name = `stdlib`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `math`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `code`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `itemize`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `proof`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `tabular`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `footnote-scheme`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `font-junicode`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `font-latin-modern`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `font-latin-modern-math`, registry = `default`, requirement = `^0.0.1` |),
+    (| name = `font-ipa-ex`, registry = `default`, requirement = `^0.0.1` |),
+  ],
+|)]
+use package open Stdlib
+use package open Code
+use package open Itemize
+use package open Math
+use open BookClass of `book-class`
+use open Settings of `settings`
+use open TopPage of `top-page`
+use open Preface of `preface`
+use open Introduction of `introduction`
+use open GettingStarted of `getting-started`
+use open AliasCommandDefinition of `alias-command-definition`
+use open Programming of `programming`
+use open Overall of `overall`
+use open AdvancedCommandDefinition of `advanced-command-definition`
+use open LineBreaking of `line-breaking`
+use open SystemAndConfig of `system-and-config`
+use open Typography of `typography`
+use open Graphics of `graphics`
+use open CrossReference of `cross-reference`
+use open PageBreaking of `page-breaking`
+use open FutureWork of `future-work`
+use open Specification of `specification`
+use open Bib of `bib`
 
+let open Book in
+let open Pervasives in
 document (|
-  title = {The \SATySFi;book（Web公開版 第1版）};
-  author = {Takashi SUWA};
-  preface = preface;
-  bibliography = bibliography;
-  top-page = Some(top-page);
+  title = {The \SATySFi;book（Web公開版 第1版）},
+  author = {Takashi SUWA},
+  preface = preface,
+  bibliography = bibliography,
+  top-page = Some(top-page),
   copyright-page = (|
-    title = {The \SATySFi;book（Web公開版 第1版）};
-    author = {Takashi SUWA\hskip(5cm);};
-    date = {2018年12月5日};
-    contact = {\url{gfngfn.bd\@gmail.com}};
-    printed-by = None;
-  |);
+    title = {The \SATySFi;book（Web公開版 第1版）},
+    author = {Takashi SUWA\hskip(5cm);},
+    date = {2018年12月5日},
+    contact = {\url{gfngfn.bd\@gmail.com}},
+    printed-by = None,
+  |),
 |) '<
-  +chapter?:(`introduction`){\SATySFi;の開発動機}< #introduction; >
-  +chapter?:(`getting-started`){\SATySFi;簡易入門}< #getting-started; >
-  +chapter?:(`basic-command-definition`){コマンド定義：基礎編}<
+  +chapter?(label = `introduction`)({\SATySFi;の開発動機})< #introduction; >
+  +chapter?(label = `getting-started`)({\SATySFi;簡易入門})< #getting-started; >
+  +chapter?(label = `basic-command-definition`)({コマンド定義：基礎編})<
     +p{
       \ref-chapter(`getting-started`);で\pkg{stdjareport}を用いて
       \SATySFi;の基礎的なコマンドの用法を知った．
@@ -60,13 +92,13 @@ document (|
     +section{簡単なエイリアス}< #alias-command-definition; >
     +section{プログラミング言語としての\SATySFi;}< #programming; >
   >
-  +chapter?:(`overall-structure`){文書が処理される仕組み}< #overall; >
-  +chapter?:(`advanced-command-definition`){コマンド定義：発展編}< #advanced-command-definition; >
-  +chapter?:(`line-breaking`){行分割処理}< #line-breaking; >
-  +chapter?:(`system-and-config`){システムと設定ファイル}< #system-and-config; >
-  +chapter?:(`typography`){文字組版}< #typography; >
-  +chapter?:(`graphics`){グラフィックス}< #graphics; >
-  +chapter?:(`math`){数式組版}<
+  +chapter?(label = `overall-structure`)({文書が処理される仕組み})< #overall; >
+  +chapter?(label = `advanced-command-definition`)({コマンド定義：発展編})< #advanced-command-definition; >
+  +chapter?(label = `line-breaking`)({行分割処理})< #line-breaking; >
+  +chapter?(label = `system-and-config`)({システムと設定ファイル})< #system-and-config; >
+  +chapter?(label = `typography`)({文字組版})< #typography; >
+  +chapter?(label = `graphics`)({グラフィックス})< #graphics; >
+  +chapter?(label = `math`)({数式組版})<
     +p{
       理工系の文書をしたためる者にとって，
       数式組版機能は当然のものとして組版処理システムに備わっていてほしいものだ．
@@ -103,7 +135,7 @@ document (|
     +section{数式の構文と扱い}<
       +p{
         数式は基本的にプログラム中で\codem{\$\{ ${\cdots} \}}という形で書かれ，
-        \type(Type.math);型をもつ．数式中では大小ラテン文字と数字のほか，
+        \type(Type.math-text);型をもつ．数式中では大小ラテン文字と数字のほか，
         以下の記号類が通常の文字として直接書ける：
 
         \tokens{|+|-|\*|/|:|=|\<|\>|~|.|,|?|\`|}%
@@ -119,24 +151,24 @@ document (|
                        |\meta-star{'}^\meta{mg}_\meta{mg}
                        |\meta-star{'}_\meta{mg}|}
             }}
-          |};
+          |},
           ${|\text!{\codem{\meta{ma}}} |\BNFeq
             \text!{\codem{
               \meta-or{|\meta{ch}|\meta{mcapp}|\#\meta{x}|}
             }}
-          |};
+          |},
           ${|\text!{\codem{\meta{mg}}} |\BNFeq
             \text!{\codem{
               \meta-or{|\meta{ma}|\{\meta-star{\meta{me}}\}|\{\|\meta-star{\meta-star{\meta{me}}\|}\}|}
             }}
-          |};
+          |},
           ${|\text!{\codem{\meta{mcapp}}} |\BNFeq
             \text!{\codem{
               \meta{mcmd}\meta-star{
                 \meta-or{|\{\meta-star{\meta{me}}\}|!(\meta{expr})|!\{\meta{It}\}|!\<\meta{Bt}\>|}
               }
             }}
-          |};
+          |},
         ];%
 
         ただしここで\codem{\meta{ch}}は数式中で文字として使えるもの1文字，
@@ -163,24 +195,24 @@ document (|
 
         インラインコマンドやブロックコマンドと違い，第0引数はとらない．
         各変数\codem{\metasub(${i}){x}}に\type(Type.tymtausub ${i});がつく下で
-        式\codem{\meta{expr}}に\type(Type.math);型がつくとき，
+        式\codem{\meta{expr}}に\type(Type.math-text);型がつくとき，
         この数式コマンド\codem{\meta{mcmd}}が定義されて
         以下のような型をもつと定められている：
 
         \quote{
-          \type(Type.(cmdM [tymtausub ${1}; tymtausub ${2}; of-math ${\cdots}; tymtausub ${n}]));
+          \type(Type.(cmdM [tymtausub ${1}, tymtausub ${2}, of-math ${\cdots}, tymtausub ${n}]));
         }%
 
         例えば型の導出規則 ${\Gamma \vdash e : \tau} を
         \codem{\\tj\{\\Gamma\}\{e\}\{\\tau\}}という具合に書くためのコマンド
-        \codem{\\tj} : \type(Type.(cmdM [math; math; math]));は
+        \codem{\\tj} : \type(Type.(cmdM [math-text, math-text, math-text]));は
         以下のようにして定義できる：
 
         \d-code(```
           let-math \tj mG me mty = ${#mG \vdash #me : #mty}
         ```);%
 
-        \type(Type.math);型の値はインラインテキストに近いもので，単に数式の “構造” を保持しているだけである\footnote{
+        \type(Type.math-text);型の値はインラインテキストに近いもので，単に数式の “構造” を保持しているだけである\footnote{
           ただし “演算子がどのように結合しているか” というような情報は持っていない．
           1つの “グループ” \codem{\{ ${\cdots} \}}内で文字は単に一列に並んでいるだけで，
           “構造” として保持されているのはあくまで指数・添字・分数といったものである．
@@ -189,7 +221,7 @@ document (|
         }．
         数式を “実際に組み上げる” のは次のプリミティヴが担う：
 
-        \val({embed-math})(Type.(context --> (math --> inline-boxes)));%
+        \val({embed-math})(Type.(context --> (math-text --> inline-boxes)));%
 
         これを使った例を挙げてみる．
         別行立て数式を記述するコマンド\codem{\\eqn}の実装の根幹は，次のようになっている：
@@ -214,12 +246,12 @@ document (|
       +p{
         \ref-chapter(`getting-started`);でも説明したように，数式\codem{\$\{ ${\cdots} \}}は
         インラインテキスト中にいきなり書いても使えるのであった．これがどのような仕組みで実現されているのかというと，
-        実は文中数式は実行時に何らかの\type(Type.(cmdI [math]));型のコマンド\codem{\\\meta{math}}が補われており，
+        実は文中数式は実行時に何らかの\type(Type.(cmdI [math-text]));型のコマンド\codem{\\\meta{math}}が補われており，
         単に\codem{\$\{ ${\cdots} \}}と書いたものは\codem{\\\meta{math}(\$\{ ${\cdots} \})\;}と
         扱われるのである．この文中数式用コマンド\codem{\\\meta{math}}はテキスト処理文脈に保持されており，
         インライン変換時に補われる．文中数式用コマンドを変えたい場合は
 
-        \val({set-math-command})(Type.(cmdI [math] --> (context --> context)));%
+        \val({set-math-command})(Type.(cmdI [math-text] --> (context --> context)));%
 
         というプリミティヴを使い，\codem{\meta{ctx} \|\> set-math-command (command \\\meta{math})}
         のようにコマンドを渡す．\codem{(command ${\cdots})}は “コマンドそのもの” を受け渡しするための
@@ -232,17 +264,17 @@ document (|
         この節では，数式コマンドの定義に使える，数式を構築するためのプリミティヴを紹介する．
         用例は\pkg{math}パッケージの実装を見ると豊富にあるので参照されたい．
 
-        \val-explain({math-frac})(Type.(math --> (math --> math))) {
+        \val-explain({math-frac})(Type.(math-text --> (math-text --> math-text))) {
           第1引数を分子，第2引数を分母とする分数を返す．
         }%
 
-        \vals-explain({|math-lower|math-upper|})(Type.(math --> (math --> math))) {
+        \vals-explain({|math-lower|math-upper|})(Type.(math-text --> (math-text --> math-text))) {
           \codem{math-lower \metasub(${1}){m} \metasub(${2}){m}}で
           数式\codem{\metasub(${1}){m}}の下に添字の大きさで数式\codem{\metasub(${2}){m}}を組む．
           \codem{math-upper}は上．
         }%
 
-        \val-explain({math-radical})(Type.(option math --> (math --> math))) {
+        \val-explain({math-radical})(Type.(option math-text --> (math-text --> math-text))) {
           第2引数に渡された数式に根号をつける．第1引数は根号の左肩に乗せる指数がある場合は
           \codem{Some( ${\cdots} )}で与え，必要ない場合は\codem{None}で与えるつもりで用意したものだが，
           現在の実装では\codem{None}の場合しか対応しておらず，\codem{Some( ${\cdots} )}を渡すと
@@ -251,7 +283,7 @@ document (|
           将来的には\codem{math-paren}のように根号をグラフィックスで指定できるようにする想定である．
         }%
 
-        \val-explain({math-color})(Type.(color --> (math --> math))) {
+        \val-explain({math-color})(Type.(color --> (math-text --> math-text))) {
           \codem{math-color \meta{color} \meta{m}}で
           数式\codem{\meta{m}}に文字色を\codem{\meta{color}}にする指定をつけて返す．
         }%
@@ -274,14 +306,14 @@ document (|
         ともあれ，この\type(Type.math-class);型の関わるプリミティヴを見てみる：
 
         \vals-explain({|get-left-math-class|get-right-math-class|})%
-          (Type.(context --> (math --> option math-class))) {
+          (Type.(context --> (math-text --> option math-class))) {
             第1引数のテキスト処理文脈に基づき，第2引数の数式の
             左端と右端がそれぞれどのような属性の “アトム” になっているか返す．
             数式が空の場合は\codem{None}が返る．
           }%
 
         \val-explain({math-group})%
-          (Type.(math-class --> (math-class --> (math --> math)))) {
+          (Type.(math-class --> (math-class --> (math-text --> math-text)))) {
             \codem{math-group \metasub(${1}){cls} \metasub(${2}){cls} \meta{m}}で
             数式\codem{\meta{m}}内は通常どおりのスペーシングで組むが，\codem{\meta{m}}全体を
             左側のスペーシングに関しては属性\codem{\metasub(${1}){cls}}を，
@@ -289,7 +321,7 @@ document (|
           }%
 
         \val-explain({math-pull-in-scripts})%
-          (Type.(math-class --> (math-class --> ((option math --> (option math --> math)) --> math)))) {
+          (Type.(math-class --> (math-class --> ((option math-text --> (option math-text --> math-text)) --> math-text)))) {
             添字と指数がつけられたときに，“それらを内側に取り込んで使える” 数式要素を作成する機能である．
             \codem{math-pull-in-scripts \metasub(${1}){cls} \metasub(${2}){cls} \meta{k}}の形で使う．
             左側のスペーシングに関しては属性\codem{\metasub(${1}){cls}}を，
@@ -308,7 +340,7 @@ document (|
           }%
 
         \val-explain({text-in-math})%
-          (Type.(math-class --> ((context --> inline-boxes) --> math))) {
+          (Type.(math-class --> ((context --> inline-boxes) --> math-text))) {
             \codem{text-in-math \meta{cls} \meta{k}}の形で使い，
             属性\codem{\meta{cls}}の “アトム” として\codem{\meta{k}}が返すインラインボックス列を数式中に埋め込む．
             \codem{\meta{k}}に渡されるテキスト処理文脈は
@@ -336,7 +368,7 @@ document (|
 
         \d-code-and-block(```
           +p{ ${\lim_{n \to \infty} a_n} }
-        ```)(open Sample in '<
+        ```)(let open Sample in '<
           +p{ ${\lim_{n \to \infty} a_n} }
         >);%
         \vskip(-0.75cm);%
@@ -357,7 +389,7 @@ document (|
             | MathBoldScript | MathFraktur | MathBoldFraktur | MathDoubleStruck
         ```);%
 
-        \vals-explain({|math-char|math-big-char|})(Type.(math-class --> (string --> math))) {
+        \vals-explain({|math-char|math-big-char|})(Type.(math-class --> (string --> math-text))) {
           \codem{math-char \meta{cls} \meta{s}}で文字列\codem{\meta{s}}を
           属性\codem{\meta{cls}}の “アトム” にしたものを返す．
           これは “使われた場所” での文字クラス指定によらず常に同一の文字列を返す．
@@ -365,23 +397,23 @@ document (|
           OpenTypeの\code(`MATH`);テーブルに基づいて大きいグリフを選択する．
         }%
 
-        \val-explain({math-char-class})(Type.(math-char-class --> (math --> math))) {
+        \val-explain({math-char-class})(Type.(math-char-class --> (math-text --> math-text))) {
           \codem{math-char-class \meta{cls} \meta{m}}で，
           数式\codem{\meta{m}}を文字クラス\codem{\meta{cls}}で組むことを指定する．
         }%
 
         \val-explain({math-variant-char})%
           (Type.(math-class --> (record [
-            ({italic}, string);
-            ({bold-italic}, string);
-            ({roman}, string);
-            ({bold-roman}, string);
-            ({script}, string);
-            ({bold-script}, string);
-            ({fraktur}, string);
-            ({bold-fraktur}, string);
-            ({double-struck}, string);
-          ] --> math))) {
+            ({italic}, string),
+            ({bold-italic}, string),
+            ({roman}, string),
+            ({bold-roman}, string),
+            ({script}, string),
+            ({bold-script}, string),
+            ({fraktur}, string),
+            ({bold-fraktur}, string),
+            ({double-struck}, string),
+          ] --> math-text))) {
             各文字クラスが指定されている下で
             どのような文字列に変換するか個別に指定した文字の “アトム” を返す．
           }%
@@ -433,7 +465,7 @@ document (|
         括弧はグラフィックスで定義されるのである．
         以下で登場する\type(Type.paren);型は
         \type(Type.(length --> (length --> (length --> (length --> (color -->
-          product [inline-boxes; length --> length]))))));
+          product [inline-boxes, length --> length]))))));
         という型のシノニムである．\type(Type.paren);型の函数は “括弧の片側の描き方” に相当するもので，
         内容の高さ，内容の深さ，軸の高さ，文字サイズ，文字色をこの順に受け取り，
         片側の括弧に相当するブロックボックス列と，添字・指数をカーニングするための函数との組を返す．
@@ -445,7 +477,7 @@ document (|
         ${\paren{\frac{A}{\sqrt{1 + x^2}} + b}^2} のように自動で調整された位置に添字・指数をつけてくれる方が
         数式把握上の誤解をきたしにくく望ましいだろう，という動機から設けられている機能である．
 
-        \val-explain({math-paren})(Type.(paren --> (paren --> (math --> math)))) {
+        \val-explain({math-paren})(Type.(paren --> (paren --> (math-text --> math-text)))) {
           \codem{math-paren \metasub(${1}){paren} \metasub(${2}){paren} \meta{m}}で
           \codem{\metasub(${1}){paren}}を左括弧，
           \codem{\metasub(${2}){paren}}を右括弧として
@@ -455,7 +487,7 @@ document (|
         }%
 
         \val-explain({math-paren-with-middle})%
-          (Type.(paren --> (paren --> (paren --> (list math --> math))))) {
+          (Type.(paren --> (paren --> (paren --> (list math-text --> math-text))))) {
             \codem{math-paren-with-middle
               \metasub(${1}){paren} \metasub(${2}){paren} \codem{\metasub(${3}){paren}} \meta{ms}}
             の形で使う．
@@ -496,15 +528,15 @@ document (|
 
         \d-code-and-block(```
           +p{ ${\opcls{0}{1}, \opcls{\frac{1}{2^n}}{1}} }
-        ```)(open Sample in '<
+        ```)(let open Sample in '<
           +p{ ${\opcls{0}{1}, \opcls{\frac{1}{2^n}}{1}} }
         >);%
         \vskip(-0.75cm);%
       }
     >
   >
-  +chapter?:(`cross-reference`){相互参照}< #cross-reference; >
-  +chapter?:(`page-breaking`){ページ分割処理}< #page-breaking; >
-  +chapter?:(`future-work`){Future Work}< #future-work; >
-  +chapter?:(`specification`){言語仕様}< #specification; >
+  +chapter?(label = `cross-reference`)({相互参照})< #cross-reference; >
+  +chapter?(label = `page-breaking`)({ページ分割処理})< #page-breaking; >
+  +chapter?(label = `future-work`)({Future Work})< #future-work; >
+  +chapter?(label = `specification`)({言語仕様})< #specification; >
 >

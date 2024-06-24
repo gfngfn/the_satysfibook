@@ -1,750 +1,760 @@
 % -*- coding: utf-8 -*-
-@import: settings
+use package open Stdlib
+use package open Code
+use package open Itemize
+use package open Math
+use open BookClass of `book-class`
+use open Settings of `settings`
 
-let advanced-command-definition = '<
-    +p{
-      \ref-chapter(`basic-command-definition`);
-      で基礎的なコマンド定義の方法およびプログラミング言語としての\SATySFi;について習得し，
-      \ref-chapter(`overall-structure`);で\SATySFi;の処理系の全体像，
-      および各工程がどのように定式化されているかについて概観した．
-      これらの前提知識を把握した下で，この章ではようやくフォントや文字色，行送りといった，
-      “組版上の装飾的な視覚情報” にも関わる処理を行なうコマンドの実装方法を習得する．
-    }
-    +section?:(`text-processing-context`){テキスト処理文脈}<
+module AdvancedCommandDefinition = struct
+  val advanced-command-definition =
+    let open Book in
+    let open Pervasives in
+  '<
       +p{
-        \ref-chapter(`overall-structure`);でも既に述べたが，
-        組版処理はインラインテキスト・ブロックテキストといった
-        “テキストの情報” だけが与えられてもできない．
-        すなわち，どのフォントのどんなサイズで組むか\footnote{
-          活版印刷の慣習としては，“font” という語は
-          各字形が同一のデザインに則っているだけでなく
-          サイズも相等しいひと揃いの活字のセットを指したようだが，
-          \SATySFi;でフォントと言う場合は
-          （字形やそれに関するメトリックのひとかたまりに紐づけられた）フォント名，
-          拡大縮小比率，ベースライン調整率
-          の3つ組を指す．詳しくは\ref-chapter(`typography`);で述べる．
-        }，段落の幅や行送りはどの程度の長さにするか，
-        といった情報が “テキストの情報” に加えて必要である．
-        これらの
-        “テキストには表れていないが組版処理上必要な情報”
-        を，\SATySFi;は
-        \dfnje{\index(`テキスト処理文脈`){テキスト処理文脈}}{text-processing context}
-        という機構に保持させて扱う．
-        抽象的な説明を続けてもおそらく要領を得ないであろうから，
-        具体例を用いて説明しよう．
-        例えば，文字サイズを1.5倍に変更するコマンド\codem{\\enlarge}を考える：
-
-        \d-code-and-block(```
-          +p{ 内側の\enlarge{文字が\enlarge{1.5倍}の大きさに}なります． }
-        ```)(open Sample in '<
-          +p{ 内側の\enlarge{文字が\enlarge{1.5倍}の大きさに}なります． }
-        >);%
-
-        このような\codem{\\enlarge}は次のように定義できる：
-
-        \d-code(```
-          let-inline ctx \enlarge it =
-            let size = get-font-size ctx in
-            let ctx-enlarge = set-font-size (size *' 1.5) ctx in
-              read-inline ctx-enlarge it
-        ```);%
-
-        唐突に全部見せられてもあまり実感が湧かないであろうから少しずつ説明するが，
-        まず1行目から見慣れない文法である．
-        \codem{let-inline}を用いてインラインコマンドを定義する構文は
-        \ref-chapter(`basic-command-definition`);で既に紹介したが，
-        ここでは\codem{let-inline}と定義されるコマンド名\codem{\\enlarge}との間に
-        \codem{ctx}なる何かがある．
-        実はこれこそがテキスト処理文脈を受け取る “第0引数” の変数だ．
-        コマンドの適用が評価されるとき，
-        ユーザが与えた通常の引数に加えて，コマンドが使われている箇所のすぐ外側の
-        テキスト処理文脈がこの変数\codem{ctx}に渡され，
-        コマンドの実装中で使える，というわけである．
-        ここまで\pkg{stdjareport}など
-        何らかのクラスファイルが提供するマークアップ等の方式に従って
-        \SATySFi;を使うにあたってはテキスト処理文脈を全く意識する必要がなかったであろうけれども，
-        実のところユーザからは見えない裏側で
-        密かに各コマンドがテキスト処理文脈を受け渡ししていたのである．
-        なお，\codem{ctx}は単に変数名なので，第0引数に\codem{x}とか\codem{y}とか
-        \codem{i-love-satysfi}といった違う名前を使っても構わない\footnote{
-          ただし，既存のパッケージでは慣習的に第0引数を必ず\codem{ctx}という変数名にしているので，
-          複数人で開発したり，既存パッケージを改造したりする場合は
-          \codem{ctx}という変数名で統一した方が理解に齟齬を生じにくいかもしれない．
-        }．
+        \ref-chapter(`basic-command-definition`);
+        で基礎的なコマンド定義の方法およびプログラミング言語としての\SATySFi;について習得し，
+        \ref-chapter(`overall-structure`);で\SATySFi;の処理系の全体像，
+        および各工程がどのように定式化されているかについて概観した．
+        これらの前提知識を把握した下で，この章ではようやくフォントや文字色，行送りといった，
+        “組版上の装飾的な視覚情報” にも関わる処理を行なうコマンドの実装方法を習得する．
       }
-      +p{
-        さて，続いてコマンド定義の “中身” を見てみる．
-        第0引数の\codem{ctx}と（各適用でユーザが与える）第1引数\codem{it}を使うのだが，
-        まず\codem{size}に
-        外から渡されてきたテキスト処理文脈\codem{ctx}が保持している
-        フォントサイズを取り出して束縛する．これはプリミティヴ：
-
-        \val?:(`get-font-size`)({get-font-size})%
-          (Type.(context --> length));%
-
-        を用いて行なう．取得したフォントサイズ\codem{size}は\type(Type.(length));型であり，
-        \codem{\*'}を用いて\codem{size \*' 1.5}で${1.5}倍の長さを得る．
-        フォントサイズの設定は
-
-        \val?:(`set-font-size`)({set-font-size})%
-          (Type.(length --> (context --> context)));%
-
-        を用いて行なう．
-        すなわち，古いテキスト処理文脈\codem{ctx}と設定するフォントサイズ\codem{size}に対して
-        \codem{set-font-size size ctx}で
-        フォントサイズの更新された新しいテキスト処理文脈が返ってくる．
-        \codem{\\enlarge}の実装では，この新しいテキスト処理文脈を
-        変数\codem{ctx-enlarge}に束縛している．
-        なお，ここの一連の処理で
-        \codem{ctx}の内容が “書き換えられる” わけではないことに注意されたい．
-        単に\codem{ctx}の内容のうちフォントサイズに関するデータだけが
-        \codem{size}に変更された新しいテキスト処理文脈がつくられて
-        \codem{ctx-enlarge}という変数に束縛されているだけである．
-        実際，\codem{ctx-enlarge}が束縛されたスコープでも
-        依然として\codem{ctx}を使うことができ，
-        かつそのテキスト処理文脈には元々のフォントサイズが保持されている．
-      }
-      +p{
-        最も重要なのは最終行だ．ここで使われているプリミティヴ
-
-        \val?:(`read-inline`)({read-inline})%
-          (Type.(context --> (inline-text --> inline-boxes)));%
-
-        は\ref-chapter(`overall-structure`);で説明した
-        インライン変換器に相当し，\ref-figure(`conversion-to-inline-boxes`);
-        に示されたような処理をしている．すなわち，
-        \codem{read-inline \meta{ctx} \meta{it}}で
-        テキスト処理文脈\codem{\meta{ctx}}の保持するフォントや
-        文字サイズなどの情報をもとにインラインテキスト\codem{\meta{it}}を
-        インラインボックス列へと変換する．
-        そしてこれがきわめて重要な事項なのだが，
-        インラインテキスト\codem{\meta{it}}に含まれている
-        インラインコマンドの適用が評価されるのも，
-        この\codem{read-inline}によるインラインボックス列への変換の最中である．
-        このとき，\codem{read-inline}に第1引数として渡したテキスト処理文脈が，
-        第2引数の\codem{\meta{it}}中の各コマンド適用を評価するときに
-        第0引数として渡されるのである．
-        興味のある読者は，これについて\ref-chapter(`specification`);を眺めるとよいかもしれない．
-      }
-      +p{
-        さて，実際にコマンドが処理される様子を “コマ送りで” 眺めてみる．
-        まずは（コマンドを含む）普通のテキストがある．
-        これに対して\codem{read-inline}がテキスト処理文脈 ${C_1} を用いて
-        インライン変換を始めた状況を考えよう：
-
-        \quote(open BoxGraphics in {
-          \text(${C_1}){The \\enlarge\{quick brown\} fox}
-        });%
-
-        縦棒は “現在インライン変換器が読んでいるところ”である．
-        現在の位置にあるのが “単なるテキストとしての文字” であるとき，
-        インライン変換器はそのとき読み進めるのに使っているテキスト処理文脈が保持している
-        フォントや文字サイズ，文字色といった情報を使って
-        “テキストとしての文字” を “アウトライン化された，組める状態になったグリフとしての文字”
-        に変換する：
-
-        \quote(open BoxGraphics in {
-          \roman?:(10mm){|T|h|e|}\space(10mm);\text(${C_1}){\\enlarge\{quick brown\} fox}
-        });%
-
-        コマンドに出会うと，そのコマンドの定義を “思い返す”：
-
-        \d-code(```
-          let-inline ctx \enlarge it =
-            let size = get-font-size ctx in
-            let ctx-enlarge = set-font-size (size *' 1.5) ctx in
-              read-inline ctx-enlarge it
-        ```);%
-
-        そしてこのコマンド定義に基づいて第0引数に現在のテキスト処理文脈（ここでは ${C_1}）を，
-        第1引数以降もインラインテキスト中にユーザが与えたものを，それぞれ渡して評価する．
-        \codem{set-font-size}によって文字サイズが更新された ${C_1} を ${C_2} と書くことにすると，
-        続いて\codem{\\enlarge}の定義中にある\codem{read-inline}が再び
-        インライン変換器をテキスト処理文脈を ${C_2} にして起動する：
-
-        \quote(open BoxGraphics in {
-          \text(${C_2}){quick brown}
-        });%
-
-        そして ${C_2} は文字サイズが大きくなっているので次のように変換され，
-
-        \quote(open BoxGraphics in {
-          \roman?:(15mm){|q|u|i|c|k|}\space(15mm);\text(${C_2}){brown}
-        });%
-
-        やがて末尾まで到達する：
-
-        \quote(open BoxGraphics in {
-          \roman?:(15mm){|q|u|i|c|k|}\space(15mm);\roman?:(15mm){|b|r|o|w|n|}\text(${C_2}){}
-        });%
-
-        末尾まで到達すると，\codem{\\enlarge}がそれを返り値として戻し，
-        もともとコマンドの適用があった箇所が返り値で置き換えられる：
-
-        \quote(open BoxGraphics in {
-          \roman?:(10mm){|T|h|e|}\space(10mm);\roman?:(15mm){|q|u|i|c|k|}\space(15mm);%
-            \roman?:(15mm){|b|r|o|w|n|}\text(${C_1}){\ fox}
-        });%
-
-        再びテキスト処理文脈 ${C_1} を用いたインライン変換に戻り，
-        継続する：
-
-        \quote(open BoxGraphics in {
-          \roman?:(10mm){|T|h|e|}\space(10mm);\roman?:(15mm){|q|u|i|c|k|}\space(15mm);%
-            \roman?:(15mm){|b|r|o|w|n|}\space(10mm);\roman?:(10mm){|f|o|x|}\text(${C_1}){}
-        });%
-
-        こうして末尾まで到達し，インライン変換の処理が再帰的に行なわれた結果のブロックボックス列が完成するのである．
-
-      }
-      +p{
-        さて，コマンドにつく型の話をすると，基本的に
-
-        \d-codem{
-          let-inline \meta{ctx} \meta{cmd} \metasub(${1}){x} \metasub(${2}){x} ${\cdots} \metasub(${n}){x} =
-            \meta{expr}
-        }%
-
-        という構文でインラインコマンドが定義されるとき，
-        第0引数\codem{\meta{ctx}}は\type(Type.context);型がつくとされ，
-        また各変数\codem{\metasub(${i}){x}}が\type(Type.tymtausub ${i});型をもつ下で
-        \codem{\meta{expr}}は\type(Type.inline-boxes);型であることが要請される．
-        こうして定義されたインラインコマンド\codem{\meta{cmd}}は
-
-        \quote{
-          \type(Type.(cmdI [tymtausub ${1}; tymtausub ${2}; of-math ${\cdots}; tymtausub ${n}]));
-        }%
-
-        という型をもつと定められている\footnote{
-          この説明は正確ではない．詳しくは\ref-section(`syntax-sugar-for-let-inline`);
-          および\ref-chapter(`specification`);を参照されたい．
-        }．この型は感覚的には
-
-        \quote{
-          \type(Type.(context --> (tymtausub ${1} --> (tymtausub ${2} -->
-            (of-math ${\cdots} --> (tymtausub ${n} --> inline-boxes))))));
-        }%
-
-        という函数の型とほぼ同等なのだが，函数とは違って部分適用することが想定されていないことや，
-        将来実装予定のテキストモードでは
-
-        \quote{
-          \type(Type.(context --> (tymtausub ${1} --> (tymtausub ${2} -->
-            (of-math ${\cdots} --> (tymtausub ${n} --> string))))));
-        }%
-
-        という函数のように扱われることが期待され，
-        PDFモードとテキストモードとで共通の型になっていることが望ましいという観点から，
-        このように統一的な型をつけて扱うことにしている．
-
-      }
-      +p{
-        ちなみに，ここで説明の例に挙げた
-        \codem{get-font-size}および\codem{set-font-size}とほぼ同様の感覚で使えるプリミティヴが
-        \SATySFi;にはいくつも備わっている．この本でそれらを順を追って説明していくのだが，
-        \codem{set-font-size}程度の比較的簡単な部類のものには以下がある：
-
-        \val-explain({set-text-color})(Type.(color --> (context --> context))) {
-          \codem{\meta{ctx} \|\> set-text-color \meta{color}}で
-          現在の文字色を\codem{\meta{color}}に更新したテキスト処理文脈を返す．
-          例えば\codem{\meta{ctx} \|\> set-text-color (RGB(0., 0., 0.5))}は
-          文字を紺色で “描く” ように更新したテキスト処理文脈を返す．
-        }%
-
-        \val-explain({get-text-color})(Type.(context --> color)) {
-          テキスト処理文脈に保持されている文字色を返す．
-        }%
-
-        \val-explain({set-manual-rising})(Type.(length --> (context --> context))) {
-          \codem{\meta{ctx} \|\> set-manual-rising \meta{l}}で
-          “文字が描かれる位置” を本来よりも\codem{\meta{l}}だけ高い位置にする．
-        }%
-      }
-      +example{
-        「\SATySFi;」を打ち出すインラインコマンド
-        \codem{\\SATySFi} : \type(Type.(cmdI []));は
-        \codem{set-manual-rising}を用いて実装されている：
-
-        \d-code(```
-          let no-break ib =
-            let pads = (0pt, 0pt, 0pt, 0pt) in
-              inline-frame-outer pads (fun _ _ _ _ -> []) ib
-
-          let-inline ctx \SATySFi =
-            let size = get-font-size ctx in
-            let f = read-inline ctx in
-            let fd =
-              read-inline
-                (ctx |> set-manual-rising (0pt -' (size *' 0.25)))
-            in
-            let ib =
-              f {SAT} ++ kern (size *' 0.15) ++ fd {Y}
-                ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
-            in
-              script-guard Latin (no-break ib)
-        ```);%
-
-        \codem{inline-frame-outer}については\ref-chapter(`graphics`);で触れるが，
-        今は気にしなくてよく，
-        単にここで定義された\codem{no-break} : \type(Type.(inline-boxes --> inline-boxes));
-        が与えられたブロックボックス列を途中で行分割不可能にする函数だと把握すればよい．
-        \codem{script-guard}についても\ref-chapter(`typography`);で触れるが，
-        これはこのコマンドが使用された箇所の前後に挿入される和欧間スペースなどに関わるものである．
-      }
-    >
-    +section?:(`syntax-sugar-for-let-inline`){コマンド定義の糖衣構文}<
-      +p{
-        ところで，インラインコマンドを定義する構文：
-
-        \d-codem{
-          let-inline \meta{ctx} \meta{cmd} \metasub(${1}){x} ${\cdots} \metasub(${n}){x} = \meta{expr}
-        }%
-
-        は\ref-chapter(`basic-command-definition`);で解説したlet式と同様に
-
-        \d-codem{
-          let-inline \meta{ctx} \meta{cmd} =
-            (fun \metasub(${1}){x} ${\cdots} \metasub(${n}){x} -\> \meta{expr})
-        }%
-
-        の糖衣構文である．これはあまり意識する必要はないが，知っていると部分適用などを駆使して
-        コマンド適用が簡潔に書けたりして便利である．
-        より詳しく知りたい場合は\ref-chapter(`specification`);を参照されたい．
-
-        さらに言うと，おそらくこちらは少し意外に感じられるかと思うが，
-        \ref-chapter(`basic-command-definition`);で登場した
-        テキスト処理文脈を受け取らない\codem{let-inline}によるコマンド定義の構文：
-
-        \d-codem{
-          let-inline \meta{cmd} \metasub(${1}){x} ${\cdots} \metasub(${n}){x} = \meta{expr}
-        }%
-
-        は，実は
-
-        \d-codem{
-          let-inline \meta{ctx} \meta{cmd} =
-            (fun \metasub(${1}){x} ${\cdots} \metasub(${n}){x} -\>
-              read-inline \meta{ctx} \meta{expr})
-        }%
-
-        の糖衣構文である．ただし，\codem{\meta{ctx}}は\codem{\meta{expr}}に自由出現しない変数名を
-        ひとつ選んだものである．
-        要するに外から渡されるテキスト処理文脈を
-        そのままインラインテキスト\codem{\meta{expr}}のインライン変換に使うだけ，ということである．
-        こちらの第0引数を取らない構文は
-        \codem{=}より前に書いてある変数の個数で\codem{read-inline}が “挿入” される場所が
-        決定されるので，
-
-        \d-codem{
-          let-inline \meta{cmd} =
-            (fun \metasub(${1}){x} ${\cdots} \metasub(${n}){x} -\> \meta{expr})
-        }%
-
-        と書いても意図通りには脱糖衣されないことに注意されたい．
-      }
-    >
-    +section{行分割を行なうコマンド}<
-      +p{
-        行分割処理に相当するプリミティヴは
-
-        \val({line-break})(Type.(bool --> (bool --> (context --> (inline-boxes --> block-boxes)))));%
-
-        である．これは
-        \codem{line-break \metasub(${1}){b} \metasub(${2}){b} \meta{ctx} \meta{ib}}
-        の形で使われ，行分割された結果であるブロックボックス列を返してくれる．
-        引数はそれぞれ以下を指示する\footnote{
-          このインターフェイスは設計した著者もあまり美しいとは思えないのだが，
-          頻出のプリミティヴであるため互換性の都合上存続している．
-          将来の非互換なヴァージョンで姿を変えるかもしれない．
-        }：
-
-        \listing{
-          * \codem{\metasub(${1}){b}}：\quad;
-            組み上がった段落の直前でページ分割してよいか否か
-
-          * \codem{\metasub(${2}){b}}：\quad;
-            組み上がった段落の直後でページ分割してよいか否か
-
-          * \codem{\meta{ctx}}：\quad;
-            行長や行送りなどを取り出すためのテキスト処理文脈
-
-          * \codem{\meta{ib}}：\quad;
-            行分割対象となるインラインボックス列
-        }%
-
-        \codem{\metasub(${1}){b}}および\codem{\metasub(${2}){b}}は
-        あくまで組み上がった段落の前後でページ分割してよいかどうかの指定であり，
-        段落中での改ページには干渉しないことに注意されたい．
-        典型的な利用場面としては，
-        章節の題の直後で改ページされないように指定することなどが挙げられる．
-        この文脈で「段落」が指すのはあくまで “文字が適切に行分割されて行が連なったもの” であり，
-        文書上のマークアップで段落と扱われるデータであるとは限らない．
-        章題も文字が一度行方向に並べられ，
-        （ほとんどの場合は1箇所も行分割されないとはいえ，形式上は）行分割処理を経て
-        行がページの進行方向に連なるものへと組み上げられた結果という意味では
-        立派な「段落」なのである．
-      }
-      +p{
-        行分割が実際にどのようなアルゴリズムで行なわれるかについては
-        \ref-chapter(`line-breaking`);を参照してもらうとして，
-        ここでは行分割処理が “インターフェイスとしてどのように使えるのか” を扱う．
-        和文組版での段落を組むブロックコマンド\codem{+p}の，
-        最もシンプルな定義は次のようなものだ：
-
-        \d-code(```
-          let-block ctx +p it-inner =
-            let ib-indent = inline-skip (get-font-size ctx *' 0.88) in
-            let ib-inner = read-inline ctx it-inner in
-              line-break true true ctx
-                (ib-indent ++ ib-inner ++ inline-fil)
-        ```);%
-
-        \codem{let-inline}と同様，\codem{let-block}によるブロックコマンドの定義も
-        “テキスト処理文脈を外から渡してもらう” ための第0引数\codem{ctx}をとることができる．
-        ここで定義した\codem{+p}はユーザが与える引数\codem{it-inner}としてインラインテキストを受け取る．
-        最初に定義している\codem{ib-indent}は
-        いわゆる字下げのための “白いインラインボックス列” だ\footnote{
-          活版印刷でいうところの\dfn{クワタ}の役割をするものである．
-        }．これの定義には
-
-        \val({inline-skip})(Type.(length --> inline-boxes));%
-
-        というプリミティヴを用いている．\codem{inline-skip \meta{l}}という形で使い，
-        長さ\codem{\meta{l}}だけ文字の進行方向に幅をもつ，伸縮しない空白をつくる\footnote{
-          何らかの “許容範囲” で伸縮する空白は
-          \codem{inline-glue}というプリミティヴを用いてつくる．
-          これについては\ref-chapter(`line-breaking`);を参照されたい．
-        }．ここの例で与えられている長さは
-        \codem{get-font-size}を用いて取得した現在の文字サイズを${0.88}倍したものである．
-        ${0.88}という数字を決め打ちでハードコードしてしまっているが，
-        これは欧文に対する和文のデフォルトの\dfn{拡大率}を表している．
-        フォントに於ける拡大率の概念については
-        \ref-chapter(`system-and-config`);および\ref-chapter(`typography`);で扱うので，
-        今は特に気にしなくてよい．
-        こうして段落の字下げ部分ができたところで，
-        続いて段落の本領であるテキスト内容の処理にとりかかる．
-        ここはそれほど変哲はなく，前述の\codem{read-inline}と現在の文脈\codem{ctx}を用いて
-        インラインテキスト\codem{it-inner}を “字幅などをもつ，組める状態” である
-        インラインボックス列へと変換し，変数\codem{ib-inner}をそれに束縛する．
-      }
-      +p{
-        最後はこれらをつなげて行分割して仕上げである．
-        インラインボックス列同士を結合させる処理は
-
-        \val({++})(Type.(inline-boxes --> (inline-boxes --> inline-boxes)));%
-
-        というプリミティヴによって行なう．これを用いて
-        \codem{ib-indent ++ ib-inner}
-        とすることで，行分割して段落に組み上げたい内容が完成する．
-        と言いたいところだが，
-        実はこれを\codem{line-break}の第4引数として渡すと意図どおりにはならない．
-        というのも，\codem{line-break}が行なうのは
-        “各行を最後の端まで使い切っている段落への整形” だからだ．
-        つまり，\codem{ib-indent ++ ib-inner}を
-        \codem{line-break}の第4引数に渡すと，
-        最終行も行長いっぱいに伸びるように組まれた段落になっている
-        ブロックボックス列が返ってくる．
-        通常の段落を組むとき，
-        常に最終行を最後までぴっちりと行長を使い切って組むことは全く意図していない．
-        「最終行は途中でも終わってよい」ということを
-        行分割処理を行なう機構に教えてあげるにはどうすればよいのだろう？\quad;
-        こういった使えるのが次のプリミティヴである：
-
-        \val({inline-fil})(Type.(inline-boxes));%
-
-        これは “途中で行分割されることはないが，
-        周囲の要請に応じてどこまでも伸ばせる，任意の非負の長さをもてる空白” である\footnote{
-          \TeX;ユーザなら，\code(`\fil`);に相当する機構だと言えば
-          おそらくすぐわかるだろう．ちなみに現在のところは\code(`\fill`);に相当する機構，
-          つまり “より強い無限伸長グルー” は\SATySFi;には備わっていない．
-        }．
-        これをインラインボックス列の最後に結合させることで，
-        「最終行は途中のどこで終わってもよい」ということを行分割処理を担う機構に間接的に教えられるのである．
-        したがって行分割させるインラインボックス列は
-        \codem{ib-indent ++ ib-inner ++ inline-fil}
-        ということになる．
-        この\codem{+p}の使用例はあらためて掲げる必要もないだろう．
-        この本の本文中の段落は上に掲げた定義と本質的に同等な定義の\codem{+p}を用いて組まれており，
-        いたるところに使用例があるからだ．以上が行分割処理の非常にオーソドックスな用例である．
-      }
-      +p{
-        ブロックコマンドもインラインコマンドと同様の方法で型がつけられる．すなわち，
-
-        \d-codem{
-          let-block \meta{ctx} \meta{cmd} \metasub(${1}){x} \metasub(${2}){x} ${\cdots} \metasub(${n}){x} =
-            \meta{expr}
-        }%
-
-        でブロックコマンド\codem{\meta{cmd}}を定義する際は
-        第0引数\codem{\meta{ctx}}には\type(Type.context);型がつけられ，
-        \codem{\meta{expr}}は各引数\codem{\metasub(${i}){x}}が
-        \type(Type.(tymtausub ${i}));型をもつ下で
-        \type(Type.block-boxes);型がつくことが要請される．
-        以上によって定義した\codem{\meta{cmd}}は
-
-        \quote{
-          \type(Type.(cmdB [tymtausub ${1}; tymtausub ${2}; of-math ${\cdots}; tymtausub ${n}]));
-        }%
-
-        という型がつけられる．
-        例えば上で定義した\codem{+p}は\type(Type.(cmdB [inline-text]));という型がつく．
-      }
-      +p{
-        \codem{inline-fil}は “単に自由にどこまでも伸びる” だけではなく，
-        同一の行に複数個挿入されていると全部同じ長さで組まれる，という機能を備えている．
-        これを使えばいわゆる中央揃えなども行分割処理を用いて実現できる：
-
-        \d-code(```
-          let-block ctx +centering it =
-            line-break true true ctx
-              (inline-fil ++ read-inline ctx it ++ inline-fil)
-        ```);
-
-        この\codem{+centering}を用いた例が以下である：
-
-        \d-code-and-block(```
-          +centering{The \SATySFi;book}
-        ```)<
-          +centering{The \SATySFi;book}
-        >
-
-        ところが，このシンプルな実装は内容が長くなると困ったことになる：
-
-        \d-code-and-block(```
-          +centering{
-            本書は，2017年度未踏事業のひとつとして筆者が開発し，
-            2018年8月現在も発展を続けている新しい組版処理システム\SATySFi;について
-            解説することを目的としたものである．
-          }
-        ```)<
-          +centering{
-            本書は，2017年度未踏事業のひとつとして筆者が開発し，
-            2018年8月現在も発展を続けている新しい組版処理システム\SATySFi;について
-            解説することを目的としたものである．
-          }
-        >
-
-        おそらく，複数行のときに期待される最も自然な挙動は
-        「適切な長さで行に分割され，それぞれ中央揃えになっている」
-        だろう．実はこれは案外複雑な話で，完全に自動で処理する方法は今のところおそらくない．
-        \ref-chapter(`line-breaking`);で紹介する\codem{set-every-word-break}を
-        使えば一応それらしいことはできるが，ハイフネーションのない欧文にしか対応できない．
-        プリミティヴの挙動の多少の非互換な変更を許すなら，それほど大きな変更なく可能になるだろう．
-        とりあえず今の我々にできるシンプルな回避策は，
-        人間がどこで切って各行にするかを指定する方式にするというものだ：
-
-        \d-code(```
-          let-block ctx +centerings its =
-            let l = get-font-size ctx *' 0.25 in
-            let bbs =
-              its |> List.map (fun it ->
-                line-break true true (ctx |> set-paragraph-margin l l)
-                  (inline-fil ++ read-inline ctx it ++ inline-fil))
-            in
-              bbs |> List.fold-left (+++) block-nil
-        ```);%
-
-        この\codem{+centerings}は\type(Type.(cmdI [list inline-text]));という型をもつ．
-        なにやら一気に複雑そうな定義が出てきてしまったが，とりあえず用例を見て正しく動くことを確認しよう：
-
-        \d-code-and-block(```
-          +centerings{
-          | 本書は，2017年度未踏事業のひとつとして筆者が開発し，
-          | 2018年8月現在も発展を続けている新しい組版処理システム\SATySFi;について
-          | 解説することを目的としたものである．
-          |}
-        ```)<
-          +centerings{
-          | 本書は，2017年度未踏事業のひとつとして筆者が開発し，
-          | 2018年8月現在も発展を続けている新しい組版処理システム\SATySFi;について
-          | 解説することを目的としたものである．
-          |}
-        >
-
-        用例にも
-
-        \d-codem{
-          \{\|\metasub(${1}){text}\|${\cdots}\|\metasub(${n}){text}\|\}
-        }%
-
-        という新しい構文が出てきているが，これはそれほどヘンテコなものではなく，
-        一種のインライン引数であって
-        単にインラインテキストのリストを簡素に書くために用意されている糖衣構文であり，
-        以下の式引数と等価である：
-
-        \d-codem{
-          [\{\metasub(${1}){text}\}\; ${\cdots}\; \{\metasub(${n}){text}\}]
-        }%
-
-        それではあらためてコマンド定義を見てみる．
-        \codem{l}が文字サイズの${0.25}倍の長さに束縛されるのはよいとして，
-        重要なのは\codem{bbs} : \type(Type.(list block-boxes));の定義だ．
-        これは受け取ったインラインテキストのリスト\codem{its} : \type(Type.(list inline-text));
-        を要素ごとにブロックボックス列に変換している処理であり，
-        要素ごとの処理を記述しているのが函数
-
-        \val({List.map})(Type.(forall ${\alpha} (forall ${\beta}
-          ((tymalpha --> tymbeta) --> (list tymalpha --> list tymbeta)))));
-
-        だ．
-        これは\ref-chapter(`basic-command-definition`);で説明をサボってしまった
-        いわゆるマップ函数である．
-        型からもわかるように，マップ函数は
-        函数とリストを受け取ってリストの各要素にその函数を適用して
-        結果のリストを返すという高階函数である．イメージを簡単に書けば
-
-        \eqn(${
-          \text!{\codem{List.map \meta{f}
-            [\metasub(${1}){v}\; \metasub(${2}){v}\; ${\cdots}\; \metasub(${n}){v}]}}
-          \longrightarrow
-            \text!{\codem{[\meta{f} \metasub(${1}){v}\; \meta{f} \metasub(${2}){v}\;
-              ${\cdots}\; \meta{f} \metasub(${n}){v}]}}
-        });%
-
-        という具合である．\codem{+centerings}の定義中の\codem{List.map}の第1引数は，
-        インラインテキストを受け取ってそれをインラインボックス列に変換したものの
-        前後に\codem{inline-fil}をつけて\codem{line-break}に渡すことで
-        “中央揃えの1行” であるブロックボックス列をつくる函数であり，
-        これを各行に対してやった結果のリストが\codem{bbs}ということだ．
-        そして最後にやることはこの\codem{bbs}の要素をすべて結合してひとつのブロックボックス列にすることである．
-        これは
-        \val({List.fold-left})(Type.(forall ${\alpha} (forall ${\beta}
-          ((tymalpha --> (tymbeta --> tymalpha)) --> (tymalpha --> (list tymbeta --> tymalpha))))));
-        といういわゆる左畳み込み函数を用いて行なう．
-        これは “2引数函数”，“畳み込みの初期値”，“畳み込まれるリスト” を受け取って “畳み込み” を行なう高階函数である．
-        “2引数函数” を\codem{${\oplus}}と2項演算子で書くことにすると，“畳み込み” は以下のイメージのような処理である：
-
-        \align[
-          ${|| \text!{\codem{List.fold-left (${\oplus}) \meta{i}
-                [\metasub(${1}){v}\; \metasub(${2}){v}\; \metasub(${3}){v}\; ${\cdots}\; \metasub(${n}){v}]}}
-          |};${|
-            |\longrightarrow
-              \text!{\codem{List.fold-left (${\oplus}) (\meta{i} ${\oplus} \metasub(${1}){v})
-                [\metasub(${2}){v}\; \metasub(${3}){v}\; ${\cdots}\; \metasub(${n}){v}]}}
-          |};${|
-            |\longrightarrow
-              \text!{\codem{List.fold-left (${\oplus}) ((\meta{i} ${\oplus} \metasub(${1}){v}) ${\oplus} \metasub(${2}){v})
-                [\metasub(${3}){v}\; ${\cdots}\; \metasub(${n}){v}]}}
-          |};${|
-            |\math-skip!(6pt)\vdots
-          |};${|
-            |\longrightarrow
-              \text!{\codem{((${\cdots}(((\meta{i} ${\oplus} \metasub(${1}){v}) ${\oplus} \metasub(${2}){v})
-                ${\oplus} \metasub(${3}){v}) ${\oplus \cdots}) ${\oplus} \metasub(${n}){v})}}
-          |};
-        ];%
-
-        したがってこの\codem{${\oplus}}として\codem{+++}を用いると
-        \codem{bbs}の要素を順に結合してひとつのブロックボックス列にすることができる．
-        これを記述したのが最終行なのである．
-        ここで “初期値” として用いた
-
-        \val({block-nil})(Type.block-boxes);%
-
-        は，任意のブロックボックス列\codem{\meta{bb}}に対して
-        \codem{\meta{bb} +++ block-nil}と
-        \codem{block-nil +++ \meta{bb}}と
-        \codem{\meta{bb}}とがまったく等価になるようなプリミティヴである．
-        ちなみにインラインボックス列にも対応するものがあり，
-
-        \val({inline-nil})(Type.inline-boxes);%
-
-        はやはり任意のインラインボックス列\codem{\meta{ib}}に対して
-        \codem{\meta{ib} ++ inline-nil}と
-        \codem{inline-nil ++ \meta{ib}}と
-        \codem{\meta{ib}}とがまったく等価になるようなプリミティヴである．
-      }
-      +p{
-        なお，\codem{+centerings}の定義中にあった
-        \codem{set-paragraph-margin}は
-        \codem{line-break}が返す段落の上下の\dfnje{マージン}{margin}を変更するプリミティヴであり，
-        これについては\ref-chapter(`line-breaking`);で扱う．
-      }
-    >
-    +section{ブロック変換器}<
-      +p{
-        ところで，\codem{+p}のようなブロックコマンドを含むブロックテキストは
-        どのようにブロックボックス列へと変換されているのだろう？\quad;
-        実はブロックテキストをブロックボックス列に変換するのも専用の機構があり，
-        \dfnje{ブロック変換器}{block converter}と呼ぶ．本文中では触れてこなかったが，
-        すでに\ref-figure(`overall-structure`);にチラッと登場しているので
-        気づいた方もいるかもしれない．
-        インライン変換器が\codem{read-inline}というプリミティヴで提供されているように，
-        ブロック変換器にも対応するプリミティヴがある：
-
-        \val({read-block})(Type.(context --> (block-text --> block-boxes)));%
-
-        使い方もほぼ\codem{read-inline}と同様だ．
-        例えば，\codem{+section}の簡単な実装は以下のように書ける：
-
-        \d-code(```
-          let-mutable section-number <- 0
-
-          let-block ctx +section it-title bt-content =
-            let () = section-number <- !section-number + 1 in
-            let it-num = embed-string (arabic !section-number) in
-            let bb-title =
-              let ib-title =
-                read-inline (ctx |> set-section-context)
-                  {#it-num; #it-title;}
+      +section?(label = `text-processing-context`)({テキスト処理文脈})<
+        +p{
+          \ref-chapter(`overall-structure`);でも既に述べたが，
+          組版処理はインラインテキスト・ブロックテキストといった
+          “テキストの情報” だけが与えられてもできない．
+          すなわち，どのフォントのどんなサイズで組むか\footnote{
+            活版印刷の慣習としては，“font” という語は
+            各字形が同一のデザインに則っているだけでなく
+            サイズも相等しいひと揃いの活字のセットを指したようだが，
+            \SATySFi;でフォントと言う場合は
+            （字形やそれに関するメトリックのひとかたまりに紐づけられた）フォント名，
+            拡大縮小比率，ベースライン調整率
+            の3つ組を指す．詳しくは\ref-chapter(`typography`);で述べる．
+          }，段落の幅や行送りはどの程度の長さにするか，
+          といった情報が “テキストの情報” に加えて必要である．
+          これらの
+          “テキストには表れていないが組版処理上必要な情報”
+          を，\SATySFi;は
+          \dfnje{\index(`テキスト処理文脈`){テキスト処理文脈}}{text-processing context}
+          という機構に保持させて扱う．
+          抽象的な説明を続けてもおそらく要領を得ないであろうから，
+          具体例を用いて説明しよう．
+          例えば，文字サイズを1.5倍に変更するコマンド\codem{\\enlarge}を考える：
+
+          \d-code-and-block(```
+            +p{ 内側の\enlarge{文字が\enlarge{1.5倍}の大きさに}なります． }
+          ```)(let open Sample in '<
+            +p{ 内側の\enlarge{文字が\enlarge{1.5倍}の大きさに}なります． }
+          >);%
+
+          このような\codem{\\enlarge}は次のように定義できる：
+
+          \d-code(```
+            let-inline ctx \enlarge it =
+              let size = get-font-size ctx in
+              let ctx-enlarge = set-font-size (size *' 1.5) ctx in
+                read-inline ctx-enlarge it
+          ```);%
+
+          唐突に全部見せられてもあまり実感が湧かないであろうから少しずつ説明するが，
+          まず1行目から見慣れない文法である．
+          \codem{let-inline}を用いてインラインコマンドを定義する構文は
+          \ref-chapter(`basic-command-definition`);で既に紹介したが，
+          ここでは\codem{let-inline}と定義されるコマンド名\codem{\\enlarge}との間に
+          \codem{ctx}なる何かがある．
+          実はこれこそがテキスト処理文脈を受け取る “第0引数” の変数だ．
+          コマンドの適用が評価されるとき，
+          ユーザが与えた通常の引数に加えて，コマンドが使われている箇所のすぐ外側の
+          テキスト処理文脈がこの変数\codem{ctx}に渡され，
+          コマンドの実装中で使える，というわけである．
+          ここまで\pkg{stdjareport}など
+          何らかのクラスファイルが提供するマークアップ等の方式に従って
+          \SATySFi;を使うにあたってはテキスト処理文脈を全く意識する必要がなかったであろうけれども，
+          実のところユーザからは見えない裏側で
+          密かに各コマンドがテキスト処理文脈を受け渡ししていたのである．
+          なお，\codem{ctx}は単に変数名なので，第0引数に\codem{x}とか\codem{y}とか
+          \codem{i-love-satysfi}といった違う名前を使っても構わない\footnote{
+            ただし，既存のパッケージでは慣習的に第0引数を必ず\codem{ctx}という変数名にしているので，
+            複数人で開発したり，既存パッケージを改造したりする場合は
+            \codem{ctx}という変数名で統一した方が理解に齟齬を生じにくいかもしれない．
+          }．
+        }
+        +p{
+          さて，続いてコマンド定義の “中身” を見てみる．
+          第0引数の\codem{ctx}と（各適用でユーザが与える）第1引数\codem{it}を使うのだが，
+          まず\codem{size}に
+          外から渡されてきたテキスト処理文脈\codem{ctx}が保持している
+          フォントサイズを取り出して束縛する．これはプリミティヴ：
+
+          \val?(index = `get-font-size`)({get-font-size})%
+            (Type.(context --> length));%
+
+          を用いて行なう．取得したフォントサイズ\codem{size}は\type(Type.(length));型であり，
+          \codem{\*'}を用いて\codem{size \*' 1.5}で${1.5}倍の長さを得る．
+          フォントサイズの設定は
+
+          \val?(index = `set-font-size`)({set-font-size})%
+            (Type.(length --> (context --> context)));%
+
+          を用いて行なう．
+          すなわち，古いテキスト処理文脈\codem{ctx}と設定するフォントサイズ\codem{size}に対して
+          \codem{set-font-size size ctx}で
+          フォントサイズの更新された新しいテキスト処理文脈が返ってくる．
+          \codem{\\enlarge}の実装では，この新しいテキスト処理文脈を
+          変数\codem{ctx-enlarge}に束縛している．
+          なお，ここの一連の処理で
+          \codem{ctx}の内容が “書き換えられる” わけではないことに注意されたい．
+          単に\codem{ctx}の内容のうちフォントサイズに関するデータだけが
+          \codem{size}に変更された新しいテキスト処理文脈がつくられて
+          \codem{ctx-enlarge}という変数に束縛されているだけである．
+          実際，\codem{ctx-enlarge}が束縛されたスコープでも
+          依然として\codem{ctx}を使うことができ，
+          かつそのテキスト処理文脈には元々のフォントサイズが保持されている．
+        }
+        +p{
+          最も重要なのは最終行だ．ここで使われているプリミティヴ
+
+          \val?(index = `read-inline`)({read-inline})%
+            (Type.(context --> (inline-text --> inline-boxes)));%
+
+          は\ref-chapter(`overall-structure`);で説明した
+          インライン変換器に相当し，\ref-figure(`conversion-to-inline-boxes`);
+          に示されたような処理をしている．すなわち，
+          \codem{read-inline \meta{ctx} \meta{it}}で
+          テキスト処理文脈\codem{\meta{ctx}}の保持するフォントや
+          文字サイズなどの情報をもとにインラインテキスト\codem{\meta{it}}を
+          インラインボックス列へと変換する．
+          そしてこれがきわめて重要な事項なのだが，
+          インラインテキスト\codem{\meta{it}}に含まれている
+          インラインコマンドの適用が評価されるのも，
+          この\codem{read-inline}によるインラインボックス列への変換の最中である．
+          このとき，\codem{read-inline}に第1引数として渡したテキスト処理文脈が，
+          第2引数の\codem{\meta{it}}中の各コマンド適用を評価するときに
+          第0引数として渡されるのである．
+          興味のある読者は，これについて\ref-chapter(`specification`);を眺めるとよいかもしれない．
+        }
+        +p{
+          さて，実際にコマンドが処理される様子を “コマ送りで” 眺めてみる．
+          まずは（コマンドを含む）普通のテキストがある．
+          これに対して\codem{read-inline}がテキスト処理文脈 ${C_1} を用いて
+          インライン変換を始めた状況を考えよう：
+
+          \quote(let open BoxGraphics in {
+            \text(${C_1}){The \\enlarge\{quick brown\} fox}
+          });%
+
+          縦棒は “現在インライン変換器が読んでいるところ”である．
+          現在の位置にあるのが “単なるテキストとしての文字” であるとき，
+          インライン変換器はそのとき読み進めるのに使っているテキスト処理文脈が保持している
+          フォントや文字サイズ，文字色といった情報を使って
+          “テキストとしての文字” を “アウトライン化された，組める状態になったグリフとしての文字”
+          に変換する：
+
+          \quote(let open BoxGraphics in {
+            \roman?(size = 10mm)({|T|h|e|});\space(10mm);\text(${C_1}){\\enlarge\{quick brown\} fox}
+          });%
+
+          コマンドに出会うと，そのコマンドの定義を “思い返す”：
+
+          \d-code(```
+            let-inline ctx \enlarge it =
+              let size = get-font-size ctx in
+              let ctx-enlarge = set-font-size (size *' 1.5) ctx in
+                read-inline ctx-enlarge it
+          ```);%
+
+          そしてこのコマンド定義に基づいて第0引数に現在のテキスト処理文脈（ここでは ${C_1}）を，
+          第1引数以降もインラインテキスト中にユーザが与えたものを，それぞれ渡して評価する．
+          \codem{set-font-size}によって文字サイズが更新された ${C_1} を ${C_2} と書くことにすると，
+          続いて\codem{\\enlarge}の定義中にある\codem{read-inline}が再び
+          インライン変換器をテキスト処理文脈を ${C_2} にして起動する：
+
+          \quote(let open BoxGraphics in {
+            \text(${C_2}){quick brown}
+          });%
+
+          そして ${C_2} は文字サイズが大きくなっているので次のように変換され，
+
+          \quote(let open BoxGraphics in {
+            \roman?(size = 15mm)({|q|u|i|c|k|});\space(15mm);\text(${C_2}){brown}
+          });%
+
+          やがて末尾まで到達する：
+
+          \quote(let open BoxGraphics in {
+            \roman?(size = 15mm)({|q|u|i|c|k|});\space(15mm);\roman?(size = 15mm)({|b|r|o|w|n|});\text(${C_2}){}
+          });%
+
+          末尾まで到達すると，\codem{\\enlarge}がそれを返り値として戻し，
+          もともとコマンドの適用があった箇所が返り値で置き換えられる：
+
+          \quote(let open BoxGraphics in {
+            \roman?(size = 10mm)({|T|h|e|});\space(10mm);\roman?(size = 15mm)({|q|u|i|c|k|});\space(15mm);%
+              \roman?(size = 15mm)({|b|r|o|w|n|});\text(${C_1}){\ fox}
+          });%
+
+          再びテキスト処理文脈 ${C_1} を用いたインライン変換に戻り，
+          継続する：
+
+          \quote(let open BoxGraphics in {
+            \roman?(size = 10mm)({|T|h|e|});\space(10mm);\roman?(size = 15mm)({|q|u|i|c|k|});\space(15mm);%
+              \roman?(size = 15mm)({|b|r|o|w|n|});\space(10mm);\roman?(size = 10mm)({|f|o|x|});\text(${C_1}){}
+          });%
+
+          こうして末尾まで到達し，インライン変換の処理が再帰的に行なわれた結果のブロックボックス列が完成するのである．
+
+        }
+        +p{
+          さて，コマンドにつく型の話をすると，基本的に
+
+          \d-codem{
+            let-inline \meta{ctx} \meta{cmd} \metasub(${1}){x} \metasub(${2}){x} ${\cdots} \metasub(${n}){x} =
+              \meta{expr}
+          }%
+
+          という構文でインラインコマンドが定義されるとき，
+          第0引数\codem{\meta{ctx}}は\type(Type.context);型がつくとされ，
+          また各変数\codem{\metasub(${i}){x}}が\type(Type.tymtausub ${i});型をもつ下で
+          \codem{\meta{expr}}は\type(Type.inline-boxes);型であることが要請される．
+          こうして定義されたインラインコマンド\codem{\meta{cmd}}は
+
+          \quote{
+            \type(Type.(cmdI [tymtausub ${1}, tymtausub ${2}, of-math ${\cdots}, tymtausub ${n}]));
+          }%
+
+          という型をもつと定められている\footnote{
+            この説明は正確ではない．詳しくは\ref-section(`syntax-sugar-for-let-inline`);
+            および\ref-chapter(`specification`);を参照されたい．
+          }．この型は感覚的には
+
+          \quote{
+            \type(Type.(context --> (tymtausub ${1} --> (tymtausub ${2} -->
+              (of-math ${\cdots} --> (tymtausub ${n} --> inline-boxes))))));
+          }%
+
+          という函数の型とほぼ同等なのだが，函数とは違って部分適用することが想定されていないことや，
+          将来実装予定のテキストモードでは
+
+          \quote{
+            \type(Type.(context --> (tymtausub ${1} --> (tymtausub ${2} -->
+              (of-math ${\cdots} --> (tymtausub ${n} --> string))))));
+          }%
+
+          という函数のように扱われることが期待され，
+          PDFモードとテキストモードとで共通の型になっていることが望ましいという観点から，
+          このように統一的な型をつけて扱うことにしている．
+
+        }
+        +p{
+          ちなみに，ここで説明の例に挙げた
+          \codem{get-font-size}および\codem{set-font-size}とほぼ同様の感覚で使えるプリミティヴが
+          \SATySFi;にはいくつも備わっている．この本でそれらを順を追って説明していくのだが，
+          \codem{set-font-size}程度の比較的簡単な部類のものには以下がある：
+
+          \val-explain({set-text-color})(Type.(color --> (context --> context))) {
+            \codem{\meta{ctx} \|\> set-text-color \meta{color}}で
+            現在の文字色を\codem{\meta{color}}に更新したテキスト処理文脈を返す．
+            例えば\codem{\meta{ctx} \|\> set-text-color (RGB(0., 0., 0.5))}は
+            文字を紺色で “描く” ように更新したテキスト処理文脈を返す．
+          }%
+
+          \val-explain({get-text-color})(Type.(context --> color)) {
+            テキスト処理文脈に保持されている文字色を返す．
+          }%
+
+          \val-explain({set-manual-rising})(Type.(length --> (context --> context))) {
+            \codem{\meta{ctx} \|\> set-manual-rising \meta{l}}で
+            “文字が描かれる位置” を本来よりも\codem{\meta{l}}だけ高い位置にする．
+          }%
+        }
+        +example{
+          「\SATySFi;」を打ち出すインラインコマンド
+          \codem{\\SATySFi} : \type(Type.(cmdI []));は
+          \codem{set-manual-rising}を用いて実装されている：
+
+          \d-code(```
+            let no-break ib =
+              let pads = (0pt, 0pt, 0pt, 0pt) in
+                inline-frame-outer pads (fun _ _ _ _ -> []) ib
+
+            let-inline ctx \SATySFi =
+              let size = get-font-size ctx in
+              let f = read-inline ctx in
+              let fd =
+                read-inline
+                  (ctx |> set-manual-rising (0pt -' (size *' 0.25)))
               in
-                line-break true false ctx
-                  (ib-title ++ inline-fil)
-            in
-            let bb-content =
-              read-block ctx bt-content
-            in
-              bb-title +++ bb-content
-        ```);
+              let ib =
+                f {SAT} ++ kern (size *' 0.15) ++ fd {Y}
+                  ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
+              in
+                script-guard Latin (no-break ib)
+          ```);%
 
-        \codem{section-number} : \type(Type.(ref int));は
-        節番号を記録しておくための可変参照である．
-        これは\codem{+section}が呼び出されるたびにインクリメントして使っている．
-        \codem{arabic}と\codem{embed-string}を使って
-        節番号をインラインテキストに変換して\codem{it-num}をこれに束縛し，
-        この\codem{it-num}をユーザが第1引数として与えた節のタイトル\codem{it-title}と
-        \codem{\{\#it-num\; \#it-title\;\}}でインラインテキストとして結合する．
-        \type(Type.inline-text);型の変数\codem{\meta{x}}の内容が
-        インラインテキスト中で\codem{\#\meta{x}\;}という構文により埋め込めるのである．
-        実はこれは初出ではなく，すでに\ref-chapter(`basic-command-definition`);で
-        見た簡単なエイリアスの定義の際に使った記法である．
-        このインラインテキストを\codem{read-inline}で変換したインラインボックス列に
-        \codem{ib-title}を束縛し，\codem{inline-fil}を結合させて
-        \codem{line-break}に渡すことにより
-        節のタイトル\codem{bb-title}をつくる．
-        タイトル直後ではページ分割してほしくないので，
-        \codem{line-break}の第2引数には\codem{false}が与えられている．
-        ここまではそれほど新しいことはやっていない．
-        途中で\codem{set-section-context}という函数が出てくるが，
-        これは単に\codem{+section}の定義よりも手前のどこかで定義されている
-        節のタイトル用の文字サイズやフォント等の設定を行なってテキスト処理文脈に反映させる函数だ．
-        具体的には，例えば以下のような実装になっていることだろう：
+          \codem{inline-frame-outer}については\ref-chapter(`graphics`);で触れるが，
+          今は気にしなくてよく，
+          単にここで定義された\codem{no-break} : \type(Type.(inline-boxes --> inline-boxes));
+          が与えられたブロックボックス列を途中で行分割不可能にする函数だと把握すればよい．
+          \codem{script-guard}についても\ref-chapter(`typography`);で触れるが，
+          これはこのコマンドが使用された箇所の前後に挿入される和欧間スペースなどに関わるものである．
+        }
+      >
+      +section?(label = `syntax-sugar-for-let-inline`)({コマンド定義の糖衣構文})<
+        +p{
+          ところで，インラインコマンドを定義する構文：
 
-        \d-code(```
-          let set-section-context ctx =
-            ctx |> set-font-size 18pt
-                |> set-font Latin (`lmsans`, 1., 0.)
-                |> set-font Kana (`ipaexg`, 0.88, 0.)
-                |> set-font HanIdeographic (`ipaexg`, 0.88, 0.)
-        ```);%
+          \d-codem{
+            let-inline \meta{ctx} \meta{cmd} \metasub(${1}){x} ${\cdots} \metasub(${n}){x} = \meta{expr}
+          }%
 
-        \codem{read-block}が使われるのは節の本文，
-        すなわち第2引数として与えられたブロックテキスト\codem{bt-content}を
-        ブロックボックス列\codem{bb-content}に変換する部分だ．
-        この過程で，節の本文である\codem{+p}で書かれた段落や
-        \codem{+subsection}などを処理する変換が走る．
-        そして最終的に節のタイトルと本文のブロックボックス列が
+          は\ref-chapter(`basic-command-definition`);で解説したlet式と同様に
 
-        \val({+++})(Type.(block-boxes --> (block-boxes --> block-boxes)));%
+          \d-codem{
+            let-inline \meta{ctx} \meta{cmd} =
+              (fun \metasub(${1}){x} ${\cdots} \metasub(${n}){x} -\> \meta{expr})
+          }%
 
-        というプリミティヴによって結合してめでたく最終結果となる．
-        「簡素なクラスファイルをつくるのにもこんな複雑な記述をしなければならないのか」
-        と率直に感じた読者もいらっしゃるかもしれないが，
-        慣れると特に負担に感じることはない．
-        何より，処理として意味をなさない，不整合のある記述をしていたら
-        型検査器が該当箇所に型エラーを出して注意してくれるので，
-        それほど苦労せずに修正でき，スムーズに書き上げられるのである．
-        以上がブロック変換器の仕組みである．
-      }
-    >
->
+          の糖衣構文である．これはあまり意識する必要はないが，知っていると部分適用などを駆使して
+          コマンド適用が簡潔に書けたりして便利である．
+          より詳しく知りたい場合は\ref-chapter(`specification`);を参照されたい．
+
+          さらに言うと，おそらくこちらは少し意外に感じられるかと思うが，
+          \ref-chapter(`basic-command-definition`);で登場した
+          テキスト処理文脈を受け取らない\codem{let-inline}によるコマンド定義の構文：
+
+          \d-codem{
+            let-inline \meta{cmd} \metasub(${1}){x} ${\cdots} \metasub(${n}){x} = \meta{expr}
+          }%
+
+          は，実は
+
+          \d-codem{
+            let-inline \meta{ctx} \meta{cmd} =
+              (fun \metasub(${1}){x} ${\cdots} \metasub(${n}){x} -\>
+                read-inline \meta{ctx} \meta{expr})
+          }%
+
+          の糖衣構文である．ただし，\codem{\meta{ctx}}は\codem{\meta{expr}}に自由出現しない変数名を
+          ひとつ選んだものである．
+          要するに外から渡されるテキスト処理文脈を
+          そのままインラインテキスト\codem{\meta{expr}}のインライン変換に使うだけ，ということである．
+          こちらの第0引数を取らない構文は
+          \codem{=}より前に書いてある変数の個数で\codem{read-inline}が “挿入” される場所が
+          決定されるので，
+
+          \d-codem{
+            let-inline \meta{cmd} =
+              (fun \metasub(${1}){x} ${\cdots} \metasub(${n}){x} -\> \meta{expr})
+          }%
+
+          と書いても意図通りには脱糖衣されないことに注意されたい．
+        }
+      >
+      +section{行分割を行なうコマンド}<
+        +p{
+          行分割処理に相当するプリミティヴは
+
+          \val({line-break})(Type.(bool --> (bool --> (context --> (inline-boxes --> block-boxes)))));%
+
+          である．これは
+          \codem{line-break \metasub(${1}){b} \metasub(${2}){b} \meta{ctx} \meta{ib}}
+          の形で使われ，行分割された結果であるブロックボックス列を返してくれる．
+          引数はそれぞれ以下を指示する\footnote{
+            このインターフェイスは設計した著者もあまり美しいとは思えないのだが，
+            頻出のプリミティヴであるため互換性の都合上存続している．
+            将来の非互換なヴァージョンで姿を変えるかもしれない．
+          }：
+
+          \listing{
+            * \codem{\metasub(${1}){b}}：\quad;
+              組み上がった段落の直前でページ分割してよいか否か
+
+            * \codem{\metasub(${2}){b}}：\quad;
+              組み上がった段落の直後でページ分割してよいか否か
+
+            * \codem{\meta{ctx}}：\quad;
+              行長や行送りなどを取り出すためのテキスト処理文脈
+
+            * \codem{\meta{ib}}：\quad;
+              行分割対象となるインラインボックス列
+          }%
+
+          \codem{\metasub(${1}){b}}および\codem{\metasub(${2}){b}}は
+          あくまで組み上がった段落の前後でページ分割してよいかどうかの指定であり，
+          段落中での改ページには干渉しないことに注意されたい．
+          典型的な利用場面としては，
+          章節の題の直後で改ページされないように指定することなどが挙げられる．
+          この文脈で「段落」が指すのはあくまで “文字が適切に行分割されて行が連なったもの” であり，
+          文書上のマークアップで段落と扱われるデータであるとは限らない．
+          章題も文字が一度行方向に並べられ，
+          （ほとんどの場合は1箇所も行分割されないとはいえ，形式上は）行分割処理を経て
+          行がページの進行方向に連なるものへと組み上げられた結果という意味では
+          立派な「段落」なのである．
+        }
+        +p{
+          行分割が実際にどのようなアルゴリズムで行なわれるかについては
+          \ref-chapter(`line-breaking`);を参照してもらうとして，
+          ここでは行分割処理が “インターフェイスとしてどのように使えるのか” を扱う．
+          和文組版での段落を組むブロックコマンド\codem{+p}の，
+          最もシンプルな定義は次のようなものだ：
+
+          \d-code(```
+            let-block ctx +p it-inner =
+              let ib-indent = inline-skip (get-font-size ctx *' 0.88) in
+              let ib-inner = read-inline ctx it-inner in
+                line-break true true ctx
+                  (ib-indent ++ ib-inner ++ inline-fil)
+          ```);%
+
+          \codem{let-inline}と同様，\codem{let-block}によるブロックコマンドの定義も
+          “テキスト処理文脈を外から渡してもらう” ための第0引数\codem{ctx}をとることができる．
+          ここで定義した\codem{+p}はユーザが与える引数\codem{it-inner}としてインラインテキストを受け取る．
+          最初に定義している\codem{ib-indent}は
+          いわゆる字下げのための “白いインラインボックス列” だ\footnote{
+            活版印刷でいうところの\dfn{クワタ}の役割をするものである．
+          }．これの定義には
+
+          \val({inline-skip})(Type.(length --> inline-boxes));%
+
+          というプリミティヴを用いている．\codem{inline-skip \meta{l}}という形で使い，
+          長さ\codem{\meta{l}}だけ文字の進行方向に幅をもつ，伸縮しない空白をつくる\footnote{
+            何らかの “許容範囲” で伸縮する空白は
+            \codem{inline-glue}というプリミティヴを用いてつくる．
+            これについては\ref-chapter(`line-breaking`);を参照されたい．
+          }．ここの例で与えられている長さは
+          \codem{get-font-size}を用いて取得した現在の文字サイズを${0.88}倍したものである．
+          ${0.88}という数字を決め打ちでハードコードしてしまっているが，
+          これは欧文に対する和文のデフォルトの\dfn{拡大率}を表している．
+          フォントに於ける拡大率の概念については
+          \ref-chapter(`system-and-config`);および\ref-chapter(`typography`);で扱うので，
+          今は特に気にしなくてよい．
+          こうして段落の字下げ部分ができたところで，
+          続いて段落の本領であるテキスト内容の処理にとりかかる．
+          ここはそれほど変哲はなく，前述の\codem{read-inline}と現在の文脈\codem{ctx}を用いて
+          インラインテキスト\codem{it-inner}を “字幅などをもつ，組める状態” である
+          インラインボックス列へと変換し，変数\codem{ib-inner}をそれに束縛する．
+        }
+        +p{
+          最後はこれらをつなげて行分割して仕上げである．
+          インラインボックス列同士を結合させる処理は
+
+          \val({++})(Type.(inline-boxes --> (inline-boxes --> inline-boxes)));%
+
+          というプリミティヴによって行なう．これを用いて
+          \codem{ib-indent ++ ib-inner}
+          とすることで，行分割して段落に組み上げたい内容が完成する．
+          と言いたいところだが，
+          実はこれを\codem{line-break}の第4引数として渡すと意図どおりにはならない．
+          というのも，\codem{line-break}が行なうのは
+          “各行を最後の端まで使い切っている段落への整形” だからだ．
+          つまり，\codem{ib-indent ++ ib-inner}を
+          \codem{line-break}の第4引数に渡すと，
+          最終行も行長いっぱいに伸びるように組まれた段落になっている
+          ブロックボックス列が返ってくる．
+          通常の段落を組むとき，
+          常に最終行を最後までぴっちりと行長を使い切って組むことは全く意図していない．
+          「最終行は途中でも終わってよい」ということを
+          行分割処理を行なう機構に教えてあげるにはどうすればよいのだろう？\quad;
+          こういった使えるのが次のプリミティヴである：
+
+          \val({inline-fil})(Type.(inline-boxes));%
+
+          これは “途中で行分割されることはないが，
+          周囲の要請に応じてどこまでも伸ばせる，任意の非負の長さをもてる空白” である\footnote{
+            \TeX;ユーザなら，\code(`\fil`);に相当する機構だと言えば
+            おそらくすぐわかるだろう．ちなみに現在のところは\code(`\fill`);に相当する機構，
+            つまり “より強い無限伸長グルー” は\SATySFi;には備わっていない．
+          }．
+          これをインラインボックス列の最後に結合させることで，
+          「最終行は途中のどこで終わってもよい」ということを行分割処理を担う機構に間接的に教えられるのである．
+          したがって行分割させるインラインボックス列は
+          \codem{ib-indent ++ ib-inner ++ inline-fil}
+          ということになる．
+          この\codem{+p}の使用例はあらためて掲げる必要もないだろう．
+          この本の本文中の段落は上に掲げた定義と本質的に同等な定義の\codem{+p}を用いて組まれており，
+          いたるところに使用例があるからだ．以上が行分割処理の非常にオーソドックスな用例である．
+        }
+        +p{
+          ブロックコマンドもインラインコマンドと同様の方法で型がつけられる．すなわち，
+
+          \d-codem{
+            let-block \meta{ctx} \meta{cmd} \metasub(${1}){x} \metasub(${2}){x} ${\cdots} \metasub(${n}){x} =
+              \meta{expr}
+          }%
+
+          でブロックコマンド\codem{\meta{cmd}}を定義する際は
+          第0引数\codem{\meta{ctx}}には\type(Type.context);型がつけられ，
+          \codem{\meta{expr}}は各引数\codem{\metasub(${i}){x}}が
+          \type(Type.(tymtausub ${i}));型をもつ下で
+          \type(Type.block-boxes);型がつくことが要請される．
+          以上によって定義した\codem{\meta{cmd}}は
+
+          \quote{
+            \type(Type.(cmdB [tymtausub ${1}, tymtausub ${2}, of-math ${\cdots}, tymtausub ${n}]));
+          }%
+
+          という型がつけられる．
+          例えば上で定義した\codem{+p}は\type(Type.(cmdB [inline-text]));という型がつく．
+        }
+        +p{
+          \codem{inline-fil}は “単に自由にどこまでも伸びる” だけではなく，
+          同一の行に複数個挿入されていると全部同じ長さで組まれる，という機能を備えている．
+          これを使えばいわゆる中央揃えなども行分割処理を用いて実現できる：
+
+          \d-code(```
+            let-block ctx +centering it =
+              line-break true true ctx
+                (inline-fil ++ read-inline ctx it ++ inline-fil)
+          ```);
+
+          この\codem{+centering}を用いた例が以下である：
+
+          \d-code-and-block(```
+            +centering{The \SATySFi;book}
+          ```)<
+            +centering{The \SATySFi;book}
+          >
+
+          ところが，このシンプルな実装は内容が長くなると困ったことになる：
+
+          \d-code-and-block(```
+            +centering{
+              本書は，2017年度未踏事業のひとつとして筆者が開発し，
+              2018年8月現在も発展を続けている新しい組版処理システム\SATySFi;について
+              解説することを目的としたものである．
+            }
+          ```)<
+            +centering{
+              本書は，2017年度未踏事業のひとつとして筆者が開発し，
+              2018年8月現在も発展を続けている新しい組版処理システム\SATySFi;について
+              解説することを目的としたものである．
+            }
+          >
+
+          おそらく，複数行のときに期待される最も自然な挙動は
+          「適切な長さで行に分割され，それぞれ中央揃えになっている」
+          だろう．実はこれは案外複雑な話で，完全に自動で処理する方法は今のところおそらくない．
+          \ref-chapter(`line-breaking`);で紹介する\codem{set-every-word-break}を
+          使えば一応それらしいことはできるが，ハイフネーションのない欧文にしか対応できない．
+          プリミティヴの挙動の多少の非互換な変更を許すなら，それほど大きな変更なく可能になるだろう．
+          とりあえず今の我々にできるシンプルな回避策は，
+          人間がどこで切って各行にするかを指定する方式にするというものだ：
+
+          \d-code(```
+            let-block ctx +centerings its =
+              let l = get-font-size ctx *' 0.25 in
+              let bbs =
+                its |> List.map (fun it ->
+                  line-break true true (ctx |> set-paragraph-margin l l)
+                    (inline-fil ++ read-inline ctx it ++ inline-fil))
+              in
+                bbs |> List.fold-left (+++) block-nil
+          ```);%
+
+          この\codem{+centerings}は\type(Type.(cmdI [list inline-text]));という型をもつ．
+          なにやら一気に複雑そうな定義が出てきてしまったが，とりあえず用例を見て正しく動くことを確認しよう：
+
+          \d-code-and-block(```
+            +centerings{
+            | 本書は，2017年度未踏事業のひとつとして筆者が開発し，
+            | 2018年8月現在も発展を続けている新しい組版処理システム\SATySFi;について
+            | 解説することを目的としたものである．
+            |}
+          ```)<
+            +centerings{
+            | 本書は，2017年度未踏事業のひとつとして筆者が開発し，
+            | 2018年8月現在も発展を続けている新しい組版処理システム\SATySFi;について
+            | 解説することを目的としたものである．
+            |}
+          >
+
+          用例にも
+
+          \d-codem{
+            \{\|\metasub(${1}){text}\|${\cdots}\|\metasub(${n}){text}\|\}
+          }%
+
+          という新しい構文が出てきているが，これはそれほどヘンテコなものではなく，
+          一種のインライン引数であって
+          単にインラインテキストのリストを簡素に書くために用意されている糖衣構文であり，
+          以下の式引数と等価である：
+
+          \d-codem{
+            [\{\metasub(${1}){text}\}\; ${\cdots}\; \{\metasub(${n}){text}\}]
+          }%
+
+          それではあらためてコマンド定義を見てみる．
+          \codem{l}が文字サイズの${0.25}倍の長さに束縛されるのはよいとして，
+          重要なのは\codem{bbs} : \type(Type.(list block-boxes));の定義だ．
+          これは受け取ったインラインテキストのリスト\codem{its} : \type(Type.(list inline-text));
+          を要素ごとにブロックボックス列に変換している処理であり，
+          要素ごとの処理を記述しているのが函数
+
+          \val({List.map})(Type.(forall ${\alpha} (forall ${\beta}
+            ((tymalpha --> tymbeta) --> (list tymalpha --> list tymbeta)))));
+
+          だ．
+          これは\ref-chapter(`basic-command-definition`);で説明をサボってしまった
+          いわゆるマップ函数である．
+          型からもわかるように，マップ函数は
+          函数とリストを受け取ってリストの各要素にその函数を適用して
+          結果のリストを返すという高階函数である．イメージを簡単に書けば
+
+          \eqn(${
+            \text!{\codem{List.map \meta{f}
+              [\metasub(${1}){v}\; \metasub(${2}){v}\; ${\cdots}\; \metasub(${n}){v}]}}
+            \longrightarrow
+              \text!{\codem{[\meta{f} \metasub(${1}){v}\; \meta{f} \metasub(${2}){v}\;
+                ${\cdots}\; \meta{f} \metasub(${n}){v}]}}
+          });%
+
+          という具合である．\codem{+centerings}の定義中の\codem{List.map}の第1引数は，
+          インラインテキストを受け取ってそれをインラインボックス列に変換したものの
+          前後に\codem{inline-fil}をつけて\codem{line-break}に渡すことで
+          “中央揃えの1行” であるブロックボックス列をつくる函数であり，
+          これを各行に対してやった結果のリストが\codem{bbs}ということだ．
+          そして最後にやることはこの\codem{bbs}の要素をすべて結合してひとつのブロックボックス列にすることである．
+          これは
+          \val({List.fold-left})(Type.(forall ${\alpha} (forall ${\beta}
+            ((tymalpha --> (tymbeta --> tymalpha)) --> (tymalpha --> (list tymbeta --> tymalpha))))));
+          といういわゆる左畳み込み函数を用いて行なう．
+          これは “2引数函数”，“畳み込みの初期値”，“畳み込まれるリスト” を受け取って “畳み込み” を行なう高階函数である．
+          “2引数函数” を\codem{${\oplus}}と2項演算子で書くことにすると，“畳み込み” は以下のイメージのような処理である：
+
+          \align[
+            ${|| \text!{\codem{List.fold-left (${\oplus}) \meta{i}
+                  [\metasub(${1}){v}\; \metasub(${2}){v}\; \metasub(${3}){v}\; ${\cdots}\; \metasub(${n}){v}]}}
+            |},${|
+              |\longrightarrow
+                \text!{\codem{List.fold-left (${\oplus}) (\meta{i} ${\oplus} \metasub(${1}){v})
+                  [\metasub(${2}){v}\; \metasub(${3}){v}\; ${\cdots}\; \metasub(${n}){v}]}}
+            |},${|
+              |\longrightarrow
+                \text!{\codem{List.fold-left (${\oplus}) ((\meta{i} ${\oplus} \metasub(${1}){v}) ${\oplus} \metasub(${2}){v})
+                  [\metasub(${3}){v}\; ${\cdots}\; \metasub(${n}){v}]}}
+            |},${|
+              |\math-skip!(6pt)\vdots
+            |},${|
+              |\longrightarrow
+                \text!{\codem{((${\cdots}(((\meta{i} ${\oplus} \metasub(${1}){v}) ${\oplus} \metasub(${2}){v})
+                  ${\oplus} \metasub(${3}){v}) ${\oplus \cdots}) ${\oplus} \metasub(${n}){v})}}
+            |},
+          ];%
+
+          したがってこの\codem{${\oplus}}として\codem{+++}を用いると
+          \codem{bbs}の要素を順に結合してひとつのブロックボックス列にすることができる．
+          これを記述したのが最終行なのである．
+          ここで “初期値” として用いた
+
+          \val({block-nil})(Type.block-boxes);%
+
+          は，任意のブロックボックス列\codem{\meta{bb}}に対して
+          \codem{\meta{bb} +++ block-nil}と
+          \codem{block-nil +++ \meta{bb}}と
+          \codem{\meta{bb}}とがまったく等価になるようなプリミティヴである．
+          ちなみにインラインボックス列にも対応するものがあり，
+
+          \val({inline-nil})(Type.inline-boxes);%
+
+          はやはり任意のインラインボックス列\codem{\meta{ib}}に対して
+          \codem{\meta{ib} ++ inline-nil}と
+          \codem{inline-nil ++ \meta{ib}}と
+          \codem{\meta{ib}}とがまったく等価になるようなプリミティヴである．
+        }
+        +p{
+          なお，\codem{+centerings}の定義中にあった
+          \codem{set-paragraph-margin}は
+          \codem{line-break}が返す段落の上下の\dfnje{マージン}{margin}を変更するプリミティヴであり，
+          これについては\ref-chapter(`line-breaking`);で扱う．
+        }
+      >
+      +section{ブロック変換器}<
+        +p{
+          ところで，\codem{+p}のようなブロックコマンドを含むブロックテキストは
+          どのようにブロックボックス列へと変換されているのだろう？\quad;
+          実はブロックテキストをブロックボックス列に変換するのも専用の機構があり，
+          \dfnje{ブロック変換器}{block converter}と呼ぶ．本文中では触れてこなかったが，
+          すでに\ref-figure(`overall-structure`);にチラッと登場しているので
+          気づいた方もいるかもしれない．
+          インライン変換器が\codem{read-inline}というプリミティヴで提供されているように，
+          ブロック変換器にも対応するプリミティヴがある：
+
+          \val({read-block})(Type.(context --> (block-text --> block-boxes)));%
+
+          使い方もほぼ\codem{read-inline}と同様だ．
+          例えば，\codem{+section}の簡単な実装は以下のように書ける：
+
+          \d-code(```
+            let-mutable section-number <- 0
+
+            let-block ctx +section it-title bt-content =
+              let () = section-number <- !section-number + 1 in
+              let it-num = embed-string (arabic !section-number) in
+              let bb-title =
+                let ib-title =
+                  read-inline (ctx |> set-section-context)
+                    {#it-num; #it-title;}
+                in
+                  line-break true false ctx
+                    (ib-title ++ inline-fil)
+              in
+              let bb-content =
+                read-block ctx bt-content
+              in
+                bb-title +++ bb-content
+          ```);
+
+          \codem{section-number} : \type(Type.(ref int));は
+          節番号を記録しておくための可変参照である．
+          これは\codem{+section}が呼び出されるたびにインクリメントして使っている．
+          \codem{arabic}と\codem{embed-string}を使って
+          節番号をインラインテキストに変換して\codem{it-num}をこれに束縛し，
+          この\codem{it-num}をユーザが第1引数として与えた節のタイトル\codem{it-title}と
+          \codem{\{\#it-num\; \#it-title\;\}}でインラインテキストとして結合する．
+          \type(Type.inline-text);型の変数\codem{\meta{x}}の内容が
+          インラインテキスト中で\codem{\#\meta{x}\;}という構文により埋め込めるのである．
+          実はこれは初出ではなく，すでに\ref-chapter(`basic-command-definition`);で
+          見た簡単なエイリアスの定義の際に使った記法である．
+          このインラインテキストを\codem{read-inline}で変換したインラインボックス列に
+          \codem{ib-title}を束縛し，\codem{inline-fil}を結合させて
+          \codem{line-break}に渡すことにより
+          節のタイトル\codem{bb-title}をつくる．
+          タイトル直後ではページ分割してほしくないので，
+          \codem{line-break}の第2引数には\codem{false}が与えられている．
+          ここまではそれほど新しいことはやっていない．
+          途中で\codem{set-section-context}という函数が出てくるが，
+          これは単に\codem{+section}の定義よりも手前のどこかで定義されている
+          節のタイトル用の文字サイズやフォント等の設定を行なってテキスト処理文脈に反映させる函数だ．
+          具体的には，例えば以下のような実装になっていることだろう：
+
+          \d-code(```
+            let set-section-context ctx =
+              ctx |> set-font-size 18pt
+                  |> set-font Latin (`lmsans`, 1., 0.)
+                  |> set-font Kana (`ipaexg`, 0.88, 0.)
+                  |> set-font HanIdeographic (`ipaexg`, 0.88, 0.)
+          ```);%
+
+          \codem{read-block}が使われるのは節の本文，
+          すなわち第2引数として与えられたブロックテキスト\codem{bt-content}を
+          ブロックボックス列\codem{bb-content}に変換する部分だ．
+          この過程で，節の本文である\codem{+p}で書かれた段落や
+          \codem{+subsection}などを処理する変換が走る．
+          そして最終的に節のタイトルと本文のブロックボックス列が
+
+          \val({+++})(Type.(block-boxes --> (block-boxes --> block-boxes)));%
+
+          というプリミティヴによって結合してめでたく最終結果となる．
+          「簡素なクラスファイルをつくるのにもこんな複雑な記述をしなければならないのか」
+          と率直に感じた読者もいらっしゃるかもしれないが，
+          慣れると特に負担に感じることはない．
+          何より，処理として意味をなさない，不整合のある記述をしていたら
+          型検査器が該当箇所に型エラーを出して注意してくれるので，
+          それほど苦労せずに修正でき，スムーズに書き上げられるのである．
+          以上がブロック変換器の仕組みである．
+        }
+      >
+  >
+end

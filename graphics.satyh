@@ -1,695 +1,705 @@
 % -*- coding: utf-8 -*-
-@import: settings
+use package open Stdlib
+use package open Code
+use package open Math
+use package open Itemize
+use package open Tabular
+use open BookClass of `book-class`
+use open Settings of `settings`
 
-let graphics = '<
-    +p{
-      版面を構成する文字以外の要素で重要なのがグラフィックスである．
-      本章では，本文の囲み枠，表の罫線，幾何図形，直交座標系のグラフ，グラフ理論のグラフ，可換図式，
-      さらには数式中の “連続的に伸縮する” 括弧といった多様な対象を描画する用途で活用できる
-      \SATySFi;のグラフィックスの機能について紹介する．
-      一読すればわかるようにグラフィックス用のプリミティヴは非常にプリミティヴなのだが，
-      そのプリミティヴさゆえに，思い立てばユーザの手によって非常に柔軟な描画が指定できる．
-      また，頻出する図形や囲み枠の指定については
-      \pkg{gr}，\pkg{deco}，\pkg{hdecoset}，\pkg{vdecoset}
-      などのパッケージで提供されており，図形定義に活用できる．
-    }
-    +section{パス}<
+module Graphics = struct
+  val graphics =
+    let open Book in
+    let open Pervasives in
+  '<
       +p{
-        \dfnje{\index(`パス`){パス}}{path}は
-        曲線や閉曲線およびそれが占める領域を定めた情報であり，
-        グラフィックスを構成する最も基本的な単位だ．
-        パスの構築は
-
-        \listing{
-          * \index(`point`){\type(Type.(point));型}：
-              \type(Type.(product [length; length]));と同義，
-              “${2} 次元座標” や “${2} 次元ベクトル” の型として使う
-        }%
-
-        という型シノニムと
-
-        \listing{
-          * \index(`pre-path`){\type(Type.(pre-path));型}：
-              \dfnje{\index(`ミカンパス`){未完パス}}{pre-path}，
-              すなわちまだ閉じたり終了したりしていない伸ばす途中のパスの型
-          * \index(`path`){\type(Type.(path));}型：
-              完成したパスの型
-        }%
-
-        という2つの基本型を用いて，以下に挙げるようなプリミティヴで行なう．
-        座標はページの左下を ${\tuple{|0|0|}} とする絶対座標で，
-        右向きが ${+x}方向，上向きが ${+y} 方向である\footnote{
-          ${y} 座標が上向きに伸びるのは違和感があるかもしれないが，
-          これはPDFの仕様の “最も基本的な座標系” にそのまま従ったものだ．
-        }．
-        これだけ聞くと絶対座標でパスの各点を指定することについては
-        あまりにもプリミティヴすぎるのではないかと違和感を覚えるかもしれないが，
-        以下で紹介するプリミティヴ\codem{shift-path}を用いて
-        実質的に相対座標を扱うこともできるので
-        ひとまず心配しないで頂きたい．
-
-        \val-explain?:(`start-path`)({start-path})%
-          (Type.(point --> pre-path)) {
-            第1引数に指定した点から未完パスを開始する．
-          }%
-        \val-explain?:(`line-to`)({line-to})%
-          (Type.(point --> (pre-path --> pre-path))) {
-            \codem{\meta{prepath} \|\> line-to \meta{v}}で
-            未完パス\codem{\meta{prepath}}を終点から
-            点\codem{\meta{v}}へと線分で延長したものを返す．
-          }%
-        \val-explain?:(`bezier-to`)({bezier-to})%
-          (Type.(point --> (point --> (point --> (pre-path --> pre-path))))) {
-            \codem{\meta{prepath} \|\>
-              bezier-to \metasub(${1}){u} \metasub(${2}){u} \meta{v}}
-            で未完パス\codem{\meta{prepath}}を
-            終点から点\codem{\meta{v}}へとBézier曲線で延長したものを返す．
-            \codem{\metasub(${1}){u}}と\codem{\metasub(${2}){u}}は制御点である．
-          }%
-        \val-explain?:(`close-with-line`)({close-with-line})%
-          (Type.(pre-path --> path)) {
-            未完パスを受け取り，起点と終点を線分で結んで閉じてできるパスを返す．
-          }%
-        \val-explain?:(`close-with-bezier`)({close-with-bezier})%
-          (Type.(point --> (point --> (pre-path --> path)))) {
-            \codem{\meta{prepath} \|\>
-              close-with-bezier \metasub(${1}){u} \metasub(${2}){u}}で
-            未完パス\codem{\meta{prepath}}の起点と終点を
-            制御点\codem{\metasub(${1}){u}}，\codem{\metasub(${2}){u}}の
-            Bézier曲線で結んで閉じてできるパスを返す．
-          }%
-        \val-explain?:(`terminate-path`)({terminate-path})%
-          (Type.(pre-path --> path)) {
-            未完パスを受け取り，開いたままのパスとして返す．
-          }%
-        \val-explain?:(`unite-path`)({unite-path})%
-          (Type.(path --> (path --> path))) {
-            2つのパスを統合して1つにする．
-            これはドーナツ形など中空のパスをつくるのに必須である\footnote{
-              点がパスの “内側” であるか否かは，
-              その点を囲んでいるパスの回転数の総和の偶奇によって決まっている．
-            }．
-          }%
-        \val-explain?:(`shift-path`)({shift-path})%
-          (Type.(point --> (path --> path))) {
-            \codem{\meta{path} \|\> shift-path \meta{v}}で
-            パス\codem{\meta{path}}の位置を\codem{\meta{v}}だけずらす．
-          }%
-        \val-explain?:(`get-path-bbox`)({get-path-bbox})%
-          (Type.(path --> product [point; point])) {
-            パスを受け取り，そのパスのバウンディングボックスの左下と右上の座標の組を返す．
-            すなわち，与えられたパスが占める領域のうち
-            ${x} 座標がとる最小値と ${y} 座標がとる最小値の組
-            ${\tuple{|x_{\mathrm{min}}|y_{\mathrm{min}}|}}と，
-            ${x} 座標がとる最大値と ${y} 座標がとる最大値の組
-            ${\tuple{|x_{\mathrm{max}}|y_{\mathrm{max}}|}}との組を返す．
-          }
+        版面を構成する文字以外の要素で重要なのがグラフィックスである．
+        本章では，本文の囲み枠，表の罫線，幾何図形，直交座標系のグラフ，グラフ理論のグラフ，可換図式，
+        さらには数式中の “連続的に伸縮する” 括弧といった多様な対象を描画する用途で活用できる
+        \SATySFi;のグラフィックスの機能について紹介する．
+        一読すればわかるようにグラフィックス用のプリミティヴは非常にプリミティヴなのだが，
+        そのプリミティヴさゆえに，思い立てばユーザの手によって非常に柔軟な描画が指定できる．
+        また，頻出する図形や囲み枠の指定については
+        \pkg{gr}，\pkg{deco}，\pkg{hdecoset}，\pkg{vdecoset}
+        などのパッケージで提供されており，図形定義に活用できる．
       }
-      +p{
-        パスの定義のたびに毎回上記のプリミティヴのみを用いて記述していては
-        あまりに非効率なので，典型的な図形については
-        \pkg{gr}パッケージの\codem{Gr}モジュールが
-        より簡素なインターフェイスでパスを定義する方法を提供している．
-        代表的なものをここに挙げる：
+      +section{パス}<
+        +p{
+          \dfnje{\index(`パス`){パス}}{path}は
+          曲線や閉曲線およびそれが占める領域を定めた情報であり，
+          グラフィックスを構成する最も基本的な単位だ．
+          パスの構築は
 
-        \val-explain({Gr.line})(Type.(point --> (point --> path))){
-          与えられた2点を結ぶ線分を返す．
-        }%
-
-        \val-explain({Gr.rectangle})%
-          (Type.(point --> (point --> path))) {
-            与えられた2点が対角線をなす，${x} 軸に平行な辺をもつ長方形を返す．
+          \listing{
+            * \index(`point`){\type(Type.(point));型}：
+                \type(Type.(product [length, length]));と同義，
+                “${2} 次元座標” や “${2} 次元ベクトル” の型として使う
           }%
 
-        \val-explain({Gr.rectangle-round})%
-          (Type.(length --> (point --> (point --> path)))) {
-            角丸の長方形を返す．第1引数が角の半径の指定である．
+          という型シノニムと
+
+          \listing{
+            * \index(`pre-path`){\type(Type.(pre-path));型}：
+                \dfnje{\index(`ミカンパス`){未完パス}}{pre-path}，
+                すなわちまだ閉じたり終了したりしていない伸ばす途中のパスの型
+            * \index(`path`){\type(Type.(path));}型：
+                完成したパスの型
           }%
 
-        \val-explain({Gr.polygon})%
-          (Type.(point --> (list point --> path))) {
-            第1引数を開始点とし\footnote{
-              パスは少なくとも1点を含むようにしか定義できないので，
-              空リストが与えられないように
-              開始点をリストの要素ではなく独立した引数として
-              与えるようなインターフェイスになっている．
-            }，第2引数の要素を順に辿って開始点に戻る多角形を返す．
-            要するに
-            \codem{Gr.polygon \meta{p}
-              [\metasub(${1}){p}\; ${\cdots}\; \metasub(${n}){p}]}
-            は
+          という2つの基本型を用いて，以下に挙げるようなプリミティヴで行なう．
+          座標はページの左下を ${\tuple{|0|0|}} とする絶対座標で，
+          右向きが ${+x}方向，上向きが ${+y} 方向である\footnote{
+            ${y} 座標が上向きに伸びるのは違和感があるかもしれないが，
+            これはPDFの仕様の “最も基本的な座標系” にそのまま従ったものだ．
+          }．
+          これだけ聞くと絶対座標でパスの各点を指定することについては
+          あまりにもプリミティヴすぎるのではないかと違和感を覚えるかもしれないが，
+          以下で紹介するプリミティヴ\codem{shift-path}を用いて
+          実質的に相対座標を扱うこともできるので
+          ひとまず心配しないで頂きたい．
 
-            \d-codem{start-path \meta{p} \|\> line-to \metasub(${1}){p}
-              \|\> ${\cdots} \|\> line-to \metasub(${n}){p} \|\> close-with-line
+          \val-explain?(index = `start-path`)({start-path})%
+            (Type.(point --> pre-path)) {
+              第1引数に指定した点から未完パスを開始する．
             }%
-
-            と同じ．
-          }%
-
-        \val-explain({Gr.poly-line})%
-          (Type.(point --> (list point --> path))) {
-            第1引数を開始点とし，第2引数の要素を順に辿ってできる折れ線を返す．
-            要するに
-            \codem{Gr.poly-line \meta{p}
-              [\metasub(${1}){p}\; ${\cdots}\; \metasub(${n}){p}]}
-            は
-
-            \d-codem{start-path \meta{p} \|\> line-to \metasub(${1}){p}
-              \|\> ${\cdots} \|\> line-to \metasub(${n}){p} \|\> terminate-path
+          \val-explain?(index = `line-to`)({line-to})%
+            (Type.(point --> (pre-path --> pre-path))) {
+              \codem{\meta{prepath} \|\> line-to \meta{v}}で
+              未完パス\codem{\meta{prepath}}を終点から
+              点\codem{\meta{v}}へと線分で延長したものを返す．
             }%
-
-            と同じ．
-          }%
-
-        \val-explain({Gr.circle})%
-          (Type.(point --> (length --> path))) {
-            第1引数を中心とし，第2引数を半径とする円を返す\footnote{
-              実際に描画して視覚上の違和感を催すことはほぼないであろうが，
-              この函数が返すのは3次Bézier曲線によって近似的に表現される円なので真円ではない．
-              これはPDF 1.7の仕様に円弧のパスを記述する直接的な方法が存在しないことに起因する．
-              したがって，精密な製図を目的として使う場合は注意を要する，
-            }．
-          }%
-
-      }
-    >
-    +section{グラフィックス指定}<
-      +p{
-        パス，つまり\type(Type.(path));型の値は，単に曲線や閉曲線のデータ，
-        さらにいえばどんな領域を占めているかの情報であり，それ自体が描けるものではない．
-        実際にそのパスに基づいて文書中に図形を挿入するには，
-        それがどんな色で塗られるかとか，あるいはどんな枠線で描かれるかといった情報を与える必要がある．
-        パスに加えてそれらの情報を持っているのが\type(Type.(graphics));型の値である．
-        これは以下のプリミティヴを用いてつくる．
-
-        \val-explain?:(`fill`)({fill})%
-          (Type.(color --> (path --> graphics))) {
-            \codem{fill \meta{color} \meta{path}}で
-            パス\codem{\meta{path}}の内側を色\codem{\meta{color}}で塗った
-            グラフィックスを返す．
-          }
-        \val-explain?:(`stroke`)({stroke})%
-          (Type.(length --> (color --> (path --> graphics)))) {
-            \codem{stroke \meta{t} \meta{color} \meta{path}}で
-            パス\codem{\meta{path}}を幅\codem{\meta{t}}，
-            色\codem{\meta{color}}の線として描いたグラフィックスを返す．
-          }
-        \val-explain?:(`draw-text`)({draw-text})%
-          (Type.(point --> (inline-boxes --> graphics))) {
-            \codem{draw-text \meta{v} \meta{ib}}で
-            位置\codem{\meta{v}}を参照点として
-            インラインボックス列\codem{\meta{ib}}を置いたグラフィックスを返す．
-          }
-        \val-explain?:(`shift-graphics`)({shift-graphics})%
-          (Type.(point --> (graphics --> graphics))) {
-            第1引数の分だけ第2引数のグラフィックスの座標をずらす．
-          }
-        \val-explain?:(`get-graphics-bbox`)({get-graphics-bbox})%
-          (Type.(graphics --> product [point; point])) {
-            \codem{get-path-bbox}と同じ要領で
-            与えられたグラフィックスのバウンディングボックスを返す．
-            ストロークの太さは考慮されないことに注意．
-          }
-      }
-      +p{
-        さて，グラフィックスの構成は上に掲げたプリミティヴを用いればよいが，
-        実際に本文中にグラフィックスを挿入するにはどうすればいいのだろうか．
-        このために用意されているのがプリミティヴ：
-
-        \val?:(`inline-graphics`)({inline-graphics})%
-          (Type.(length --> (length --> (length -->
-            ((point --> list graphics) --> inline-boxes)))));%
-
-        である．これは
-        \codem{inline-graphics \meta{w} \meta{h} \meta{d} \meta{grf}}
-        という形で使うことでインラインボックス列を得る．
-        最初の3つの引数は寸法の指定で，
-        \codem{\meta{w}}が横幅，
-        \codem{\meta{h}}が高さ，
-        \codem{\meta{d}}が深さである．
-        要するにグラフィックスは大きい1文字のようなものとして扱うのだが，
-        どのような寸法の文字として扱って欲しいかを指定しているのである．
-        そして重要なのは第4引数\codem{\meta{grf}}で，
-        これは座標を受け取ってグラフィックスのリストを返す函数である．
-        \SATySFi;はまずグラフィックスの内容が確定していない段階で
-        寸法だけを用いて（行分割処理やページ分割処理を経て）
-        実際に版面のどの位置に配置されるかを決定し，
-        位置が確定してからその参照点${\tuple{|x|y|}}を
-        指定されていた函数\codem{\meta{grf}}に引数として渡す．
-        そしてその返り値としてできたグラフィックスのリストをそこに描き込む，
-        という仕組みになっている．
-      }
-      +example{
-        指定されたテキストが現在のフォントで占める領域と同じ範囲をバツ印つきの長方形の枠にして
-        出力するコマンド，すなわち以下のような記述と組版結果を実現するコマンド
-        \codem{\\area}を考える：
-
-        \d-code-and-block(```
-          +p{ The quick brown fox jumps
-                over the lazy dog. }
-          +p{ The quick \area{brown} fox jumps
-                over the \area{lazy} dog. }
-        ```)(open Sample in '<
-          +p-alph{ The quick brown fox jumps over the lazy dog. }
-          +p-alph{ The quick \area{brown} fox jumps over the \area{lazy} dog. }
-        >);%
-
-        このような\codem{\\area}は，次のように
-        \codem{inline-graphics}および
-        \index(`get-natural-metrics`)?:({\code(`get-natural-metrics`);})%
-          {\codem{get-natural-metrics}}
-        を用いて定義することができる：
-
-        \d-code(```
-          let-inline ctx \area it =
-            let ib = read-inline ctx it in
-            let (w, h, d) = get-natural-metrics ib in
-            let thickness = 0.5pt in
-            let color = Color.black in
-              inline-graphics w h d (fun (x, y) ->
-                [
-                  stroke thickness color
-                    (start-path (x, y -' d)
-                      |> line-to (x +' w, y -' d)
-                      |> line-to (x +' w, y +' h)
-                      |> line-to (x, y +' h)
-                      |> close-with-line);
-
-                  stroke thickness color
-                    (start-path (x, y -' d)
-                      |> line-to (x +' w, y +' h)
-                      |> terminate-path);
-
-                  stroke thickness color
-                    (start-path (x, y +' h)
-                      |> line-to (x +' w, y -' d)
-                      |> terminate-path);
-                ]
-              )
-        ```);
-
-        前節で紹介した\pkg{gr}パッケージの函数を使えば，
-        \codem{inline-graphics}の部分をもっと短く記述できる：
-
-        \d-code(```
-          inline-graphics w h d (fun (x, y) ->
-            List.map (stroke thickness color) [
-              Gr.rectangle (x, y -' d) (x +' w, y +' h);
-              Gr.line (x, y -' d) (x +' w, y +' h);
-              Gr.line (x, y +' h) (x +' w, y -' d);
-            ]
-          )
-        ```);%
-      }
-      +p{
-        なお，上での説明からもわかるとおり，
-        \codem{inline-graphics}の
-        第4引数\codem{\meta{grf}}の “中身” が評価されるタイミングは
-        ページ分割処理が行なわれるときであり，
-        注意を要する．ページ分割処理が始まる直前の，
-        “文書のすべての字面上の内容” が確定するときまでは決して評価されないのである．
-        したがって，グラフィックスの描画中に何らかの “副作用” を起こす処理は
-        内容の決定には基本的に影響を及ぼさない．例えば
-
-        \d-code(```
-          let-mutable flag <- false
-
-          let-inline ctx \test =
-            inline-graphics 5cm 3cm 0cm (fun (x, y) -> (
-              let () = flag <- true in
-              [ fill Color.black
-                  (Gr.rectangle (x, y) (x +' 5cm, y +' 3cm)); ]
-            ))
-
-          let-inline ctx \show-flag =
-            if !flag then {T} else {F}
-        ```);%
-
-        などという定義があり，ここ以外では可変参照\codem{flag}の内容は書き換えられないとする．
-        この定義に基づいて文書中で1箇所\codem{\\test\;}を使い，
-        その前後いたるところに\codem{\\show-flag\;}を挿入しても，
-        それらは全部「F」と出力されるはずである．
-        \codem{\\show-flag\;}が評価されるときにはまだ\codem{\\test}の定義中の
-        \codem{inline-graphics}の第4引数の “中身” は評価されておらず，
-        したがって\codem{flag}は依然として\codem{false}を参照しているからだ．
-        もし\codem{\\test}の定義が
-
-        \d-code(```
-          let-inline ctx \test =
-            let () = flag <- true in
-            inline-graphics 5cm 3cm 0cm (fun (x, y) ->
-              [ fill Color.black
-                  (Gr.rectangle (x, y) (x +' 5cm, y +' 3cm)); ]
-            )
-        ```);%
-
-        だったなら，\codem{\\test\;}より手前に書かれた\codem{\\show-flag\;}は
-        「F」に，\codem{\\test\;}より後方に書かれた\codem{\\show-flag\;}は
-        「T」になる．両者の定義の違いはしっかりと意識されたい．
-        よくわからないうちは
-        「基本的にグラフィックスを返す函数の中で “副作用” を起こそうとするべきではない」
-        と認識していてもかまわない．
-      }
-    >
-    +section{囲み枠}<
-      +p{
-        行や段落を囲う枠も，グラフィックス機能を用いて創ることができる．
-        余白の指定には\index(`paddings`){\type(Type.(paddings));型}を用いる．
-        これは単に
-        \type(Type.(product [length; length; length; length]));
-        の型シノニムであり，
-        \type(Type.(paddings));型の値は
-        左，右，上，下の順番でパディングの長さの指定として使われる．
-        また，実際の描画の指定には\index(`deco`){\type(Type.(deco));型}が用いられる．
-        これも
-        \type(Type.(point --> (length --> (length --> (length --> list graphics)))));
-        の型シノニムであり，この型の値は要するに
-        参照点，幅，高さ，深さの4引数を受け取り，それを使って描画内容を返す函数である．
-
-        \val-explain?:(`inline-frame-outer`)({inline-frame-outer})%
-          (Type.(paddings --> (deco --> (inline-boxes --> inline-boxes)))) {
-            \codem{inline-frame-outer \meta{pads} \meta{deco} \meta{ib}}で
-            パディング指定\codem{\meta{pads}}，
-            描画指定\codem{\meta{deco}}，内容\codem{\meta{ib}}の
-            枠で囲まれた部分をつくる．枠内の内容で行分割されることはないが，
-            “外側の要請に合わせて” 内容に含まれるグルーが伸縮する．
-          }%
-
-        \val-explain?:(`inline-frame-inner`)({inline-frame-inner})%
-          (Type.(paddings --> (deco --> (inline-boxes --> inline-boxes)))) {
-            \codem{inline-frame-outer}と同様だが，枠内の内容は自然な長さで組まれる．
-            すなわち，内容に含まれるグルーは自然長になる．
-          }%
-
-        \val-explain?:(`inline-frame-fixed`)({inline-frame-fixed})%
-          (Type.(length --> (paddings -->
-                  (deco --> (inline-boxes --> inline-boxes))))) {
-            \codem{inline-frame-outer}および\codem{inline-frame-inner}とよく似ているが，
-            枠の幅を第1引数で指定する．この幅に合わせて内側の内容のグルーが伸縮する．
-          }%
-
-        一般に，描画指定によっては
-        パディングは “実際の枠と内容との距離” とはならないことに注意されたい．
-        描画指定である\type(Type.(deco));型の函数は，
-        与えられた各引数を（一定の長さを足すなど）自由に加工して使うことができるからである．
-        パディングはあくまで枠で囲まれた全体が
-        どのようなバウンディングボックスをもっていると行分割処理で扱われるかの決定，および
-        枠の描画指定である\type(Type.(deco));型の函数に
-        どのような値を第2–4引数として与えるかの計算
-        のみに用いられる．
-      }
-      +p{
-        内容の途中で行分割できる枠も定義できる．
-        枠の描画指定は，
-        分割されないもの（独立形），
-        手前は切れていないが後ろで切れているもの（先頭形），
-        両方切れているもの（中途形），
-        手前で切れていて後ろは切れていないもの（末尾形）
-        の4種類をこの順番で指定する．
-        \index(`deco-set`){\type(Type.(deco-set));型}はこのための型であり，
-        \type(Type.(product [deco; deco; deco; deco]));型の型シノニムである．
-
-        \val-explain?:(`inline-frame-breakable`)({inline-frame-breakable})%
-          (Type.(paddings --> (deco-set --> (inline-boxes --> inline-boxes)))) {
-            途中で行分割できる枠で内容を囲む．
-            枠は各行で与えられた4種類から該当するものが選択される．
-            中身のグルーなどは\codem{inline-frame-outer}と同様に行分割に合わせて伸縮する．
-          }%
-
-        \codem{inline-frame-breakable}の第2引数に与えられる
-        \type(Type.(deco-set));型の4つ組は，
-        典型的にはそれぞれ「ロ」形，「匚」形，「ニ」形，「コ」形をした
-        グラフィックスを返すような函数である．
-      }
-      +example{
-        \pkg{hdecoset}パッケージの\codem{HDecoSet}モジュールには，函数
-
-        \val({simple-frame-stroke})(Type.(length --> (color --> deco-set)));%
-
-        が以下のように定義されている：
-
-        \d-code(```
-          let simple-frame-stroke t scolor =
-            let strokef = stroke t scolor in
-            let decoS (x, y) w h d =
-              [ strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h)); ]
-            in
-            let decoH (x, y) w h d =
-              [ strokef (Gr.poly-line (x +' w, y -' d)
-                  [(x, y -' d); (x, y +' h); (x +' w, y +' h);]); ]
-            in
-            let decoM (x, y) w h d =
-              [ strokef (Gr.line (x, y -' d) (x +' w, y -' d));
-                strokef (Gr.line (x, y +' h) (x +' w, y +' h)); ]
-            in
-            let decoT (x, y) w h d =
-              [ strokef (Gr.poly-line (x, y -' d)
-                  [(x +' w, y -' d); (x +' w, y +' h); (x, y +' h)]); ]
-            in
-              (decoS, decoH, decoM, decoT)
-        ```);%
-
-        これは\codem{simple-frame-stroke \meta{thk} \meta{color}}で
-        太さ\codem{\meta{thk}}，色\codem{\meta{color}}の線でできた，
-        途中で行分割可能な枠の描画の指定になる．
-        例えば
-
-        \d-code(```
-          let-inline ctx \simple-frame it =
-            let pads = (2pt, 2pt, 2pt, 2pt) in
-            let decos = HDecoSet.simple-frame-stroke 1pt (Gray(0.5)) in
-              inline-frame-breakable pads decos (read-inline ctx it)
-        ```);%
-
-        で\codem{\\simple-frame}を定義すると，
-        \Sample.simple-frame{
-          与えられたインラインテキストを，左右上下 2pt ずつのパディングを設け，
-          太さ1pt，50\%の灰色の線でできた，途中で行分割できる簡素な枠で囲むインラインコマンド
+          \val-explain?(index = `bezier-to`)({bezier-to})%
+            (Type.(point --> (point --> (point --> (pre-path --> pre-path))))) {
+              \codem{\meta{prepath} \|\>
+                bezier-to \metasub(${1}){u} \metasub(${2}){u} \meta{v}}
+              で未完パス\codem{\meta{prepath}}を
+              終点から点\codem{\meta{v}}へとBézier曲線で延長したものを返す．
+              \codem{\metasub(${1}){u}}と\codem{\metasub(${2}){u}}は制御点である．
+            }%
+          \val-explain?(index = `close-with-line`)({close-with-line})%
+            (Type.(pre-path --> path)) {
+              未完パスを受け取り，起点と終点を線分で結んで閉じてできるパスを返す．
+            }%
+          \val-explain?(index = `close-with-bezier`)({close-with-bezier})%
+            (Type.(point --> (point --> (pre-path --> path)))) {
+              \codem{\meta{prepath} \|\>
+                close-with-bezier \metasub(${1}){u} \metasub(${2}){u}}で
+              未完パス\codem{\meta{prepath}}の起点と終点を
+              制御点\codem{\metasub(${1}){u}}，\codem{\metasub(${2}){u}}の
+              Bézier曲線で結んで閉じてできるパスを返す．
+            }%
+          \val-explain?(index = `terminate-path`)({terminate-path})%
+            (Type.(pre-path --> path)) {
+              未完パスを受け取り，開いたままのパスとして返す．
+            }%
+          \val-explain?(index = `unite-path`)({unite-path})%
+            (Type.(path --> (path --> path))) {
+              2つのパスを統合して1つにする．
+              これはドーナツ形など中空のパスをつくるのに必須である\footnote{
+                点がパスの “内側” であるか否かは，
+                その点を囲んでいるパスの回転数の総和の偶奇によって決まっている．
+              }．
+            }%
+          \val-explain?(index = `shift-path`)({shift-path})%
+            (Type.(point --> (path --> path))) {
+              \codem{\meta{path} \|\> shift-path \meta{v}}で
+              パス\codem{\meta{path}}の位置を\codem{\meta{v}}だけずらす．
+            }%
+          \val-explain?(index = `get-path-bbox`)({get-path-bbox})%
+            (Type.(path --> product [point, point])) {
+              パスを受け取り，そのパスのバウンディングボックスの左下と右上の座標の組を返す．
+              すなわち，与えられたパスが占める領域のうち
+              ${x} 座標がとる最小値と ${y} 座標がとる最小値の組
+              ${\tuple{|x_{\mathrm{min}}|y_{\mathrm{min}}|}}と，
+              ${x} 座標がとる最大値と ${y} 座標がとる最大値の組
+              ${\tuple{|x_{\mathrm{max}}|y_{\mathrm{max}}|}}との組を返す．
+            }
         }
-        になる．
-      }
-      +p{
-        途中で行分割可能な枠の高さと深さ，
-        つまり\type(Type.(deco));型の函数に渡される第3引数と第4引数は，
-        分割前ではなく分割後の内容にしたがって決められるので，
-        上の例の組んだ結果から見てもわかるようにすべての行で揃うとは限らない．
-        もしすべての行で枠の高さと深さを揃えたいならどうすればよいだろうか？\quad;
-        それ専用のプリミティヴを\SATySFi;言語が提供しなくとも，
-        一応\codem{get-natural-metrics}と\codem{set-every-word-break}
-        などを用いて実現できる\footnote{
-          「一応」はやはり\ref-example(`french-q`);で言及した問題と同様の問題による．
-        }ので，練習として考えてみてほしい．
-      }
-      +p{
-        さて，ブロック方向の囲み枠はインライン方向の囲み枠に比べると幾分か複雑である．
-        というのも，枠内の内容を組むにあたっては “段落の幅” を
-        枠のためのパディングの分だけ狭くしなければならないからだ．
-        以下で説明するように，これは “テキスト処理文脈に関する継続渡し” として実現している．
+        +p{
+          パスの定義のたびに毎回上記のプリミティヴのみを用いて記述していては
+          あまりに非効率なので，典型的な図形については
+          \pkg{gr}パッケージの\codem{Gr}モジュールが
+          より簡素なインターフェイスでパスを定義する方法を提供している．
+          代表的なものをここに挙げる：
 
-        \val-explain?:(`block-frame-breakable`)({block-frame-breakable})%
-          (Type.(context --> (paddings -->
-          (deco-set --> ((context --> block-boxes) --> block-boxes))))) {
-            \codem{block-frame-breakable
-              \meta{ctx} \meta{pads} \meta{decos} \meta{k}}
-            の形で使う．
-            \codem{\meta{k}}はテキスト処理文脈を受け取って
-            ブロックボックス列を返す継続であり，
-            \codem{block-frame-breakable}は
-            第1引数として受け取ったテキスト処理文脈\codem{\meta{ctx}}を
-            第2引数として受け取ったパディングの4つ組\codem{\meta{pads}}に基づいて
-            段落幅の値だけ更新したものを継続\codem{\meta{k}}に適用し，
-            その結果のブロックボックス列を枠内の内容とする．
-            枠は\codem{inline-frame-breakable}と同様に
-            独立形，先頭形，中途形，末尾形の4つ組である\codem{\meta{decos}}を受け取り，
-            これをもとにページ分割時に描画する．
-            独立形，先頭形，中途形，末尾形は，典型的にはそれぞれ
-            「ロ」形，「冂」形，「\| \|」形，「凵」形である\footnote{
-              たとえ “同様な見た目のデザインの枠” であっても
-              \codem{inline-frame-breakable}と
-              \codem{block-frame-breakable}とで
-              同一の\type(Type.(deco-set));型の値を
-              枠の指定に使いまわせるわけではないことに注意．
-              インライン用とブロック用でグラフィックスを別々に定義しなければならない．
-            }．
-            インライン方向とは違い，ブロック方向には深さの概念がないので，
-            枠の描画時に\type(Type.(deco));型の値に渡される引数のうち
-            深さにあたる第4引数の値は常に長さ0である．
+          \val-explain({Gr.line})(Type.(point --> (point --> path))){
+            与えられた2点を結ぶ線分を返す．
           }%
 
-        以上のような仕組みによって，\SATySFi;では囲み枠が実現されている．
-      }
-    >
-    +section{表組版}<
-      +p{
-        表組版は，全組版処理システムの泣き所である．
-        簡潔なインターフェイスにすると機能が貧相になり，
-        かといって高い自由度を保とうとすると
-        簡素な表を組みたい場合でもかなり記述量が多くなってしまったりする．
-        現状の\SATySFi;の表組版機能は，後者に振り切れたような形式化が行なわれている．
-        まず，表を構成するセルのための型として
-        \index(`cell`){\type(Type.(cell));型}が用意されている．
-        これは以下で定義できるような代数的データ型だ：
+          \val-explain({Gr.rectangle})%
+            (Type.(point --> (point --> path))) {
+              与えられた2点が対角線をなす，${x} 軸に平行な辺をもつ長方形を返す．
+            }%
 
-        \d-code(```
-          type cell =
-            | EmptyCell
-            | NormalCell of paddings * inline-boxes
-            | MultiCell  of int * int * paddings * inline-boxes
-        ```);%
+          \val-explain({Gr.rectangle-round})%
+            (Type.(length --> (point --> (point --> path)))) {
+              角丸の長方形を返す．第1引数が角の半径の指定である．
+            }%
 
-        \codem{EmptyCell}は，何も内容のないセルを表す値である．
-        \codem{NormalCell(\meta{pads}, \meta{ib})}は，
-        パディング\codem{\meta{pads}}，内容\codem{\meta{ib}}の単純なセルを表す．
-        \codem{MultiCell(${\cdots})}については後述する．
-        実際に表を組むのは次のようなプリミティヴだ：
+          \val-explain({Gr.polygon})%
+            (Type.(point --> (list point --> path))) {
+              第1引数を開始点とし\footnote{
+                パスは少なくとも1点を含むようにしか定義できないので，
+                空リストが与えられないように
+                開始点をリストの要素ではなく独立した引数として
+                与えるようなインターフェイスになっている．
+              }，第2引数の要素を順に辿って開始点に戻る多角形を返す．
+              要するに
+              \codem{Gr.polygon \meta{p}
+                [\metasub(${1}){p}\; ${\cdots}\; \metasub(${n}){p}]}
+              は
 
-        \val-explain?:(`tabular`)({tabular})%
-          (Type.(list (list cell) -->
-          ((list length --> (list length --> list graphics)) --> inline-boxes))) {
-            \codem{tabular \meta{cellss} \meta{grf}}の形で使う．
-            第1引数はセルの行が列方向に並んだリストであり，
-            \codem{tabular}はこれを適切に幅を調節して表に組み上げる．
-            \codem{\meta{grf}}は罫線を指定するための函数であり，
-            この函数にはページ分割処理時に
-            ${i} 行 ${j} 列の表を組んだ時はセルの境界となるような
-            絶対座標の ${x} 値が ${\paren{j + 1}} 個並んだリストと
-            絶対座標の ${y} 値が ${\paren{i + 1}} 個並んだリストが渡されてきて，
-            そしてその結果返されるグラフィックスを\codem{tabular}は
-            罫線として表に加えて描画する．
-          }%
-      }
-      +p{
-        \codem{MultiCell(\meta{i}, \meta{j}, \meta{pads}, \meta{ib})}は，
-        パディングが\codem{\meta{pads}}で内容が\codem{\meta{ib}}なのは
-        単純なセルと同様だが，
-        その位置から（その位置を含めて）
-        下に\codem{\meta{i}}セル分，右に\codem{\meta{j}}セル分の領域を占めるセルになる．
-        要するに，表計算ソフトなどで見られるセルの結合に相当する処理が実現できるのが
-        この\codem{MultiCell(${\cdots})}であり，
-        重なる部分のセルの内容は上書きされる\footnote{
-          現在の実装では，\codem{MultiCell(${\cdots})}が上書きする部分のセルが
-          \codem{EmptyCell}ではなかった場合は実行時エラーになる．
-        }．
-      }
-      +example{
-        あまりにもソースコードの未整備感が凄まじいが，
-        現時点でも機能上表組版が可能であることを一応コード例とともに掲げる．
-        \pkg{table}パッケージが提供する\codem{\\tabular}コマンドを使って，
-        以下のように表を組むことができる：
+              \d-codem{start-path \meta{p} \|\> line-to \metasub(${1}){p}
+                \|\> ${\cdots} \|\> line-to \metasub(${n}){p} \|\> close-with-line
+              }%
 
-        \d-code-and-block(```
-          +p{ \tabular(fun t -> (
-            let (c, l, r) = (t#c, t#l, t#r) in
-            let m = t#m in
-            let e = t#e in
-            let cA = c {case A} in
-            let cB = c {case B} in
-            [ [l {Program}; m 1 2 {Answer}; e; m 1 2 {Time [ms]}; e ];
-              [e          ; cA     ; cB     ; cA       ; cB         ];
-              [l {foldn}  ; c {Yes}; c {Yes}; r  {${4}}; r {${16}}  ];
-              [l {mc91}   ; c {No} ; c {–}  ; r {${24}}; r {–}      ];
-              [l {rev}    ; c {Yes}; c {Yes}; r  {${4}}; r {${78}}  ];
-              [l {max}    ; c {Yes}; c {Yes}; r  {${8}}; r {${69}}  ];
-            ]
-          ))(fun xs ys -> (
-            let thin = stroke 0.5pt Color.black in
-            let thick = stroke 1pt Color.black in
-              match (ys, List.reverse ys) with
-              | (y0 :: y1 :: y2 :: _, ylast :: _) ->
-                  ( match (xs, List.reverse xs) with
+              と同じ．
+            }%
+
+          \val-explain({Gr.poly-line})%
+            (Type.(point --> (list point --> path))) {
+              第1引数を開始点とし，第2引数の要素を順に辿ってできる折れ線を返す．
+              要するに
+              \codem{Gr.poly-line \meta{p}
+                [\metasub(${1}){p}\; ${\cdots}\; \metasub(${n}){p}]}
+              は
+
+              \d-codem{start-path \meta{p} \|\> line-to \metasub(${1}){p}
+                \|\> ${\cdots} \|\> line-to \metasub(${n}){p} \|\> terminate-path
+              }%
+
+              と同じ．
+            }%
+
+          \val-explain({Gr.circle})%
+            (Type.(point --> (length --> path))) {
+              第1引数を中心とし，第2引数を半径とする円を返す\footnote{
+                実際に描画して視覚上の違和感を催すことはほぼないであろうが，
+                この函数が返すのは3次Bézier曲線によって近似的に表現される円なので真円ではない．
+                これはPDF 1.7の仕様に円弧のパスを記述する直接的な方法が存在しないことに起因する．
+                したがって，精密な製図を目的として使う場合は注意を要する，
+              }．
+            }%
+
+        }
+      >
+      +section{グラフィックス指定}<
+        +p{
+          パス，つまり\type(Type.(path));型の値は，単に曲線や閉曲線のデータ，
+          さらにいえばどんな領域を占めているかの情報であり，それ自体が描けるものではない．
+          実際にそのパスに基づいて文書中に図形を挿入するには，
+          それがどんな色で塗られるかとか，あるいはどんな枠線で描かれるかといった情報を与える必要がある．
+          パスに加えてそれらの情報を持っているのが\type(Type.(graphics));型の値である．
+          これは以下のプリミティヴを用いてつくる．
+
+          \val-explain?(index = `fill`)({fill})%
+            (Type.(color --> (path --> graphics))) {
+              \codem{fill \meta{color} \meta{path}}で
+              パス\codem{\meta{path}}の内側を色\codem{\meta{color}}で塗った
+              グラフィックスを返す．
+            }
+          \val-explain?(index = `stroke`)({stroke})%
+            (Type.(length --> (color --> (path --> graphics)))) {
+              \codem{stroke \meta{t} \meta{color} \meta{path}}で
+              パス\codem{\meta{path}}を幅\codem{\meta{t}}，
+              色\codem{\meta{color}}の線として描いたグラフィックスを返す．
+            }
+          \val-explain?(index = `draw-text`)({draw-text})%
+            (Type.(point --> (inline-boxes --> graphics))) {
+              \codem{draw-text \meta{v} \meta{ib}}で
+              位置\codem{\meta{v}}を参照点として
+              インラインボックス列\codem{\meta{ib}}を置いたグラフィックスを返す．
+            }
+          \val-explain?(index = `shift-graphics`)({shift-graphics})%
+            (Type.(point --> (graphics --> graphics))) {
+              第1引数の分だけ第2引数のグラフィックスの座標をずらす．
+            }
+          \val-explain?(index = `get-graphics-bbox`)({get-graphics-bbox})%
+            (Type.(graphics --> product [point, point])) {
+              \codem{get-path-bbox}と同じ要領で
+              与えられたグラフィックスのバウンディングボックスを返す．
+              ストロークの太さは考慮されないことに注意．
+            }
+        }
+        +p{
+          さて，グラフィックスの構成は上に掲げたプリミティヴを用いればよいが，
+          実際に本文中にグラフィックスを挿入するにはどうすればいいのだろうか．
+          このために用意されているのがプリミティヴ：
+
+          \val?(index = `inline-graphics`)({inline-graphics})%
+            (Type.(length --> (length --> (length -->
+              ((point --> list graphics) --> inline-boxes)))));%
+
+          である．これは
+          \codem{inline-graphics \meta{w} \meta{h} \meta{d} \meta{grf}}
+          という形で使うことでインラインボックス列を得る．
+          最初の3つの引数は寸法の指定で，
+          \codem{\meta{w}}が横幅，
+          \codem{\meta{h}}が高さ，
+          \codem{\meta{d}}が深さである．
+          要するにグラフィックスは大きい1文字のようなものとして扱うのだが，
+          どのような寸法の文字として扱って欲しいかを指定しているのである．
+          そして重要なのは第4引数\codem{\meta{grf}}で，
+          これは座標を受け取ってグラフィックスのリストを返す函数である．
+          \SATySFi;はまずグラフィックスの内容が確定していない段階で
+          寸法だけを用いて（行分割処理やページ分割処理を経て）
+          実際に版面のどの位置に配置されるかを決定し，
+          位置が確定してからその参照点${\tuple{|x|y|}}を
+          指定されていた函数\codem{\meta{grf}}に引数として渡す．
+          そしてその返り値としてできたグラフィックスのリストをそこに描き込む，
+          という仕組みになっている．
+        }
+        +example{
+          指定されたテキストが現在のフォントで占める領域と同じ範囲をバツ印つきの長方形の枠にして
+          出力するコマンド，すなわち以下のような記述と組版結果を実現するコマンド
+          \codem{\\area}を考える：
+
+          \d-code-and-block(```
+            +p{ The quick brown fox jumps
+                  over the lazy dog. }
+            +p{ The quick \area{brown} fox jumps
+                  over the \area{lazy} dog. }
+          ```)(let open Sample in '<
+            +p-alph{ The quick brown fox jumps over the lazy dog. }
+            +p-alph{ The quick \area{brown} fox jumps over the \area{lazy} dog. }
+          >);%
+
+          このような\codem{\\area}は，次のように
+          \codem{inline-graphics}および
+          \index?(it = {\code(`get-natural-metrics`);})(`get-natural-metrics`)%
+            {\codem{get-natural-metrics}}
+          を用いて定義することができる：
+
+          \d-code(```
+            let-inline ctx \area it =
+              let ib = read-inline ctx it in
+              let (w, h, d) = get-natural-metrics ib in
+              let thickness = 0.5pt in
+              let color = Color.black in
+                inline-graphics w h d (fun (x, y) ->
+                  [
+                    stroke thickness color
+                      (start-path (x, y -' d)
+                        |> line-to (x +' w, y -' d)
+                        |> line-to (x +' w, y +' h)
+                        |> line-to (x, y +' h)
+                        |> close-with-line);
+
+                    stroke thickness color
+                      (start-path (x, y -' d)
+                        |> line-to (x +' w, y +' h)
+                        |> terminate-path);
+
+                    stroke thickness color
+                      (start-path (x, y +' h)
+                        |> line-to (x +' w, y -' d)
+                        |> terminate-path);
+                  ]
+                )
+          ```);
+
+          前節で紹介した\pkg{gr}パッケージの函数を使えば，
+          \codem{inline-graphics}の部分をもっと短く記述できる：
+
+          \d-code(```
+            inline-graphics w h d (fun (x, y) ->
+              List.map (stroke thickness color) [
+                Gr.rectangle (x, y -' d) (x +' w, y +' h);
+                Gr.line (x, y -' d) (x +' w, y +' h);
+                Gr.line (x, y +' h) (x +' w, y -' d);
+              ]
+            )
+          ```);%
+        }
+        +p{
+          なお，上での説明からもわかるとおり，
+          \codem{inline-graphics}の
+          第4引数\codem{\meta{grf}}の “中身” が評価されるタイミングは
+          ページ分割処理が行なわれるときであり，
+          注意を要する．ページ分割処理が始まる直前の，
+          “文書のすべての字面上の内容” が確定するときまでは決して評価されないのである．
+          したがって，グラフィックスの描画中に何らかの “副作用” を起こす処理は
+          内容の決定には基本的に影響を及ぼさない．例えば
+
+          \d-code(```
+            let-mutable flag <- false
+
+            let-inline ctx \test =
+              inline-graphics 5cm 3cm 0cm (fun (x, y) -> (
+                let () = flag <- true in
+                [ fill Color.black
+                    (Gr.rectangle (x, y) (x +' 5cm, y +' 3cm)); ]
+              ))
+
+            let-inline ctx \show-flag =
+              if !flag then {T} else {F}
+          ```);%
+
+          などという定義があり，ここ以外では可変参照\codem{flag}の内容は書き換えられないとする．
+          この定義に基づいて文書中で1箇所\codem{\\test\;}を使い，
+          その前後いたるところに\codem{\\show-flag\;}を挿入しても，
+          それらは全部「F」と出力されるはずである．
+          \codem{\\show-flag\;}が評価されるときにはまだ\codem{\\test}の定義中の
+          \codem{inline-graphics}の第4引数の “中身” は評価されておらず，
+          したがって\codem{flag}は依然として\codem{false}を参照しているからだ．
+          もし\codem{\\test}の定義が
+
+          \d-code(```
+            let-inline ctx \test =
+              let () = flag <- true in
+              inline-graphics 5cm 3cm 0cm (fun (x, y) ->
+                [ fill Color.black
+                    (Gr.rectangle (x, y) (x +' 5cm, y +' 3cm)); ]
+              )
+          ```);%
+
+          だったなら，\codem{\\test\;}より手前に書かれた\codem{\\show-flag\;}は
+          「F」に，\codem{\\test\;}より後方に書かれた\codem{\\show-flag\;}は
+          「T」になる．両者の定義の違いはしっかりと意識されたい．
+          よくわからないうちは
+          「基本的にグラフィックスを返す函数の中で “副作用” を起こそうとするべきではない」
+          と認識していてもかまわない．
+        }
+      >
+      +section{囲み枠}<
+        +p{
+          行や段落を囲う枠も，グラフィックス機能を用いて創ることができる．
+          余白の指定には\index(`paddings`){\type(Type.(paddings));型}を用いる．
+          これは単に
+          \type(Type.(product [length, length, length, length]));
+          の型シノニムであり，
+          \type(Type.(paddings));型の値は
+          左，右，上，下の順番でパディングの長さの指定として使われる．
+          また，実際の描画の指定には\index(`deco`){\type(Type.(deco));型}が用いられる．
+          これも
+          \type(Type.(point --> (length --> (length --> (length --> list graphics)))));
+          の型シノニムであり，この型の値は要するに
+          参照点，幅，高さ，深さの4引数を受け取り，それを使って描画内容を返す函数である．
+
+          \val-explain?(index = `inline-frame-outer`)({inline-frame-outer})%
+            (Type.(paddings --> (deco --> (inline-boxes --> inline-boxes)))) {
+              \codem{inline-frame-outer \meta{pads} \meta{deco} \meta{ib}}で
+              パディング指定\codem{\meta{pads}}，
+              描画指定\codem{\meta{deco}}，内容\codem{\meta{ib}}の
+              枠で囲まれた部分をつくる．枠内の内容で行分割されることはないが，
+              “外側の要請に合わせて” 内容に含まれるグルーが伸縮する．
+            }%
+
+          \val-explain?(index = `inline-frame-inner`)({inline-frame-inner})%
+            (Type.(paddings --> (deco --> (inline-boxes --> inline-boxes)))) {
+              \codem{inline-frame-outer}と同様だが，枠内の内容は自然な長さで組まれる．
+              すなわち，内容に含まれるグルーは自然長になる．
+            }%
+
+          \val-explain?(index = `inline-frame-fixed`)({inline-frame-fixed})%
+            (Type.(length --> (paddings -->
+                    (deco --> (inline-boxes --> inline-boxes))))) {
+              \codem{inline-frame-outer}および\codem{inline-frame-inner}とよく似ているが，
+              枠の幅を第1引数で指定する．この幅に合わせて内側の内容のグルーが伸縮する．
+            }%
+
+          一般に，描画指定によっては
+          パディングは “実際の枠と内容との距離” とはならないことに注意されたい．
+          描画指定である\type(Type.(deco));型の函数は，
+          与えられた各引数を（一定の長さを足すなど）自由に加工して使うことができるからである．
+          パディングはあくまで枠で囲まれた全体が
+          どのようなバウンディングボックスをもっていると行分割処理で扱われるかの決定，および
+          枠の描画指定である\type(Type.(deco));型の函数に
+          どのような値を第2–4引数として与えるかの計算
+          のみに用いられる．
+        }
+        +p{
+          内容の途中で行分割できる枠も定義できる．
+          枠の描画指定は，
+          分割されないもの（独立形），
+          手前は切れていないが後ろで切れているもの（先頭形），
+          両方切れているもの（中途形），
+          手前で切れていて後ろは切れていないもの（末尾形）
+          の4種類をこの順番で指定する．
+          \index(`deco-set`){\type(Type.(deco-set));型}はこのための型であり，
+          \type(Type.(product [deco, deco, deco, deco]));型の型シノニムである．
+
+          \val-explain?(index = `inline-frame-breakable`)({inline-frame-breakable})%
+            (Type.(paddings --> (deco-set --> (inline-boxes --> inline-boxes)))) {
+              途中で行分割できる枠で内容を囲む．
+              枠は各行で与えられた4種類から該当するものが選択される．
+              中身のグルーなどは\codem{inline-frame-outer}と同様に行分割に合わせて伸縮する．
+            }%
+
+          \codem{inline-frame-breakable}の第2引数に与えられる
+          \type(Type.(deco-set));型の4つ組は，
+          典型的にはそれぞれ「ロ」形，「匚」形，「ニ」形，「コ」形をした
+          グラフィックスを返すような函数である．
+        }
+        +example{
+          \pkg{hdecoset}パッケージの\codem{HDecoSet}モジュールには，函数
+
+          \val({simple-frame-stroke})(Type.(length --> (color --> deco-set)));%
+
+          が以下のように定義されている：
+
+          \d-code(```
+            let simple-frame-stroke t scolor =
+              let strokef = stroke t scolor in
+              let decoS (x, y) w h d =
+                [ strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h)); ]
+              in
+              let decoH (x, y) w h d =
+                [ strokef (Gr.poly-line (x +' w, y -' d)
+                    [(x, y -' d); (x, y +' h); (x +' w, y +' h);]); ]
+              in
+              let decoM (x, y) w h d =
+                [ strokef (Gr.line (x, y -' d) (x +' w, y -' d));
+                  strokef (Gr.line (x, y +' h) (x +' w, y +' h)); ]
+              in
+              let decoT (x, y) w h d =
+                [ strokef (Gr.poly-line (x, y -' d)
+                    [(x +' w, y -' d); (x +' w, y +' h); (x, y +' h)]); ]
+              in
+                (decoS, decoH, decoM, decoT)
+          ```);%
+
+          これは\codem{simple-frame-stroke \meta{thk} \meta{color}}で
+          太さ\codem{\meta{thk}}，色\codem{\meta{color}}の線でできた，
+          途中で行分割可能な枠の描画の指定になる．
+          例えば
+
+          \d-code(```
+            let-inline ctx \simple-frame it =
+              let pads = (2pt, 2pt, 2pt, 2pt) in
+              let decos = HDecoSet.simple-frame-stroke 1pt (Gray(0.5)) in
+                inline-frame-breakable pads decos (read-inline ctx it)
+          ```);%
+
+          で\codem{\\simple-frame}を定義すると，
+          \Sample.simple-frame{
+            与えられたインラインテキストを，左右上下 2pt ずつのパディングを設け，
+            太さ1pt，50\%の灰色の線でできた，途中で行分割できる簡素な枠で囲むインラインコマンド
+          }
+          になる．
+        }
+        +p{
+          途中で行分割可能な枠の高さと深さ，
+          つまり\type(Type.(deco));型の函数に渡される第3引数と第4引数は，
+          分割前ではなく分割後の内容にしたがって決められるので，
+          上の例の組んだ結果から見てもわかるようにすべての行で揃うとは限らない．
+          もしすべての行で枠の高さと深さを揃えたいならどうすればよいだろうか？\quad;
+          それ専用のプリミティヴを\SATySFi;言語が提供しなくとも，
+          一応\codem{get-natural-metrics}と\codem{set-every-word-break}
+          などを用いて実現できる\footnote{
+            「一応」はやはり\ref-example(`french-q`);で言及した問題と同様の問題による．
+          }ので，練習として考えてみてほしい．
+        }
+        +p{
+          さて，ブロック方向の囲み枠はインライン方向の囲み枠に比べると幾分か複雑である．
+          というのも，枠内の内容を組むにあたっては “段落の幅” を
+          枠のためのパディングの分だけ狭くしなければならないからだ．
+          以下で説明するように，これは “テキスト処理文脈に関する継続渡し” として実現している．
+
+          \val-explain?(index = `block-frame-breakable`)({block-frame-breakable})%
+            (Type.(context --> (paddings -->
+            (deco-set --> ((context --> block-boxes) --> block-boxes))))) {
+              \codem{block-frame-breakable
+                \meta{ctx} \meta{pads} \meta{decos} \meta{k}}
+              の形で使う．
+              \codem{\meta{k}}はテキスト処理文脈を受け取って
+              ブロックボックス列を返す継続であり，
+              \codem{block-frame-breakable}は
+              第1引数として受け取ったテキスト処理文脈\codem{\meta{ctx}}を
+              第2引数として受け取ったパディングの4つ組\codem{\meta{pads}}に基づいて
+              段落幅の値だけ更新したものを継続\codem{\meta{k}}に適用し，
+              その結果のブロックボックス列を枠内の内容とする．
+              枠は\codem{inline-frame-breakable}と同様に
+              独立形，先頭形，中途形，末尾形の4つ組である\codem{\meta{decos}}を受け取り，
+              これをもとにページ分割時に描画する．
+              独立形，先頭形，中途形，末尾形は，典型的にはそれぞれ
+              「ロ」形，「冂」形，「\| \|」形，「凵」形である\footnote{
+                たとえ “同様な見た目のデザインの枠” であっても
+                \codem{inline-frame-breakable}と
+                \codem{block-frame-breakable}とで
+                同一の\type(Type.(deco-set));型の値を
+                枠の指定に使いまわせるわけではないことに注意．
+                インライン用とブロック用でグラフィックスを別々に定義しなければならない．
+              }．
+              インライン方向とは違い，ブロック方向には深さの概念がないので，
+              枠の描画時に\type(Type.(deco));型の値に渡される引数のうち
+              深さにあたる第4引数の値は常に長さ0である．
+            }%
+
+          以上のような仕組みによって，\SATySFi;では囲み枠が実現されている．
+        }
+      >
+      +section{表組版}<
+        +p{
+          表組版は，全組版処理システムの泣き所である．
+          簡潔なインターフェイスにすると機能が貧相になり，
+          かといって高い自由度を保とうとすると
+          簡素な表を組みたい場合でもかなり記述量が多くなってしまったりする．
+          現状の\SATySFi;の表組版機能は，後者に振り切れたような形式化が行なわれている．
+          まず，表を構成するセルのための型として
+          \index(`cell`){\type(Type.(cell));型}が用意されている．
+          これは以下で定義できるような代数的データ型だ：
+
+          \d-code(```
+            type cell =
+              | EmptyCell
+              | NormalCell of paddings * inline-boxes
+              | MultiCell  of int * int * paddings * inline-boxes
+          ```);%
+
+          \codem{EmptyCell}は，何も内容のないセルを表す値である．
+          \codem{NormalCell(\meta{pads}, \meta{ib})}は，
+          パディング\codem{\meta{pads}}，内容\codem{\meta{ib}}の単純なセルを表す．
+          \codem{MultiCell(${\cdots})}については後述する．
+          実際に表を組むのは次のようなプリミティヴだ：
+
+          \val-explain?(index = `tabular`)({tabular})%
+            (Type.(list (list cell) -->
+            ((list length --> (list length --> list graphics)) --> inline-boxes))) {
+              \codem{tabular \meta{cellss} \meta{grf}}の形で使う．
+              第1引数はセルの行が列方向に並んだリストであり，
+              \codem{tabular}はこれを適切に幅を調節して表に組み上げる．
+              \codem{\meta{grf}}は罫線を指定するための函数であり，
+              この函数にはページ分割処理時に
+              ${i} 行 ${j} 列の表を組んだ時はセルの境界となるような
+              絶対座標の ${x} 値が ${\paren{j + 1}} 個並んだリストと
+              絶対座標の ${y} 値が ${\paren{i + 1}} 個並んだリストが渡されてきて，
+              そしてその結果返されるグラフィックスを\codem{tabular}は
+              罫線として表に加えて描画する．
+            }%
+        }
+        +p{
+          \codem{MultiCell(\meta{i}, \meta{j}, \meta{pads}, \meta{ib})}は，
+          パディングが\codem{\meta{pads}}で内容が\codem{\meta{ib}}なのは
+          単純なセルと同様だが，
+          その位置から（その位置を含めて）
+          下に\codem{\meta{i}}セル分，右に\codem{\meta{j}}セル分の領域を占めるセルになる．
+          要するに，表計算ソフトなどで見られるセルの結合に相当する処理が実現できるのが
+          この\codem{MultiCell(${\cdots})}であり，
+          重なる部分のセルの内容は上書きされる\footnote{
+            現在の実装では，\codem{MultiCell(${\cdots})}が上書きする部分のセルが
+            \codem{EmptyCell}ではなかった場合は実行時エラーになる．
+          }．
+        }
+        +example{
+          あまりにもソースコードの未整備感が凄まじいが，
+          現時点でも機能上表組版が可能であることを一応コード例とともに掲げる．
+          \pkg{table}パッケージが提供する\codem{\\tabular}コマンドを使って，
+          以下のように表を組むことができる：
+
+          \d-code-and-block(```
+            +p{ \tabular(fun t -> (
+              let (c, l, r) = (t#c, t#l, t#r) in
+              let m = t#m in
+              let e = t#e in
+              let cA = c {case A} in
+              let cB = c {case B} in
+              [ [l {Program}; m 1 2 {Answer}; e; m 1 2 {Time [ms]}; e ];
+                [e          ; cA     ; cB     ; cA       ; cB         ];
+                [l {foldn}  ; c {Yes}; c {Yes}; r  {${4}}; r {${16}}  ];
+                [l {mc91}   ; c {No} ; c {–}  ; r {${24}}; r {–}      ];
+                [l {rev}    ; c {Yes}; c {Yes}; r  {${4}}; r {${78}}  ];
+                [l {max}    ; c {Yes}; c {Yes}; r  {${8}}; r {${69}}  ];
+              ]
+            ))(fun xs ys -> (
+              let thin = stroke 0.5pt Color.black in
+              let thick = stroke 1pt Color.black in
+                match (ys, List.reverse ys) with
+                | (y0 :: y1 :: y2 :: _, ylast :: _) ->
+                    ( match (xs, List.reverse xs) with
+                      | (x0 :: x1 :: _ :: x3 :: _, xlast :: _) ->
+                          let gsY1 =
+                            [y1; y2] |> List.map (fun y ->
+                              thin (Gr.line (x0, y) (xlast, y))) in
+                          let gsY2 =
+                            [y0; ylast] |> List.map (fun y ->
+                              thick (Gr.line (x0, y) (xlast, y))) in
+                          let gsX =
+                            [x1; x3] |> List.map (fun x ->
+                              thin (Gr.line (x, y0) (x, ylast))) in
+                          List.concat [
+                            [ thin (Gr.line (x0, y1) (x1, y2)) ];
+                            gsX; gsY1; gsY2;
+                          ]
+
+                      | _ -> []
+                    )
+                | _ -> []
+            )); }
+          ```)<
+            +p{ \tabular(fun cellf multif empty -> (
+              let cA = cellf {case A} in
+              let cB = cellf {case B} in
+              [ [cellf {Program}, multif 1 2 {Answer}, empty, multif 1 2 {Time [ms]}, empty ],
+                [empty          , cA         , cB         , cA           , cB               ],
+                [cellf {foldn}  , cellf {Yes}, cellf {Yes}, cellf  {${4}}, cellf {${16}}    ],
+                [cellf {mc91}   , cellf {No} , cellf {–}  , cellf {${24}}, cellf {–}        ],
+                [cellf {rev}    , cellf {Yes}, cellf {Yes}, cellf  {${4}}, cellf {${78}}    ],
+                [cellf {max}    , cellf {Yes}, cellf {Yes}, cellf  {${8}}, cellf {${69}}    ],
+              ]
+            ))(fun xs ys -> (
+              let thin = stroke 0.5pt Color.black in
+              let thick = stroke 1pt Color.black in
+                match (ys, List.reverse ys) with
+                | (y0 :: y1 :: y2 :: _, ylast :: _) ->
+                    match (xs, List.reverse xs) with
                     | (x0 :: x1 :: _ :: x3 :: _, xlast :: _) ->
                         let gsY1 =
-                          [y1; y2] |> List.map (fun y ->
-                            thin (Gr.line (x0, y) (xlast, y))) in
-                        let gsY2 =
-                          [y0; ylast] |> List.map (fun y ->
-                            thick (Gr.line (x0, y) (xlast, y))) in
-                        let gsX =
-                          [x1; x3] |> List.map (fun x ->
-                            thin (Gr.line (x, y0) (x, ylast))) in
-                        List.concat [
-                          [ thin (Gr.line (x0, y1) (x1, y2)) ];
-                          gsX; gsY1; gsY2;
-                        ]
-
-                    | _ -> []
-                  )
-              | _ -> []
-          )); }
-        ```)<
-          +p{ \tabular(fun t -> (
-            let (c, l, r) = (t#c, t#l, t#r) in
-            let m = t#m in
-            let e = t#e in
-            let cA = c {case A} in
-            let cB = c {case B} in
-            [ [l {Program}; m 1 2 {Answer}; e; m 1 2 {Time [ms]}; e ];
-              [e          ; cA     ; cB     ; cA       ; cB         ];
-              [l {foldn}  ; c {Yes}; c {Yes}; r  {${4}}; r {${16}}  ];
-              [l {mc91}   ; c {No} ; c {–}  ; r {${24}}; r {–}      ];
-              [l {rev}    ; c {Yes}; c {Yes}; r  {${4}}; r {${78}}  ];
-              [l {max}    ; c {Yes}; c {Yes}; r  {${8}}; r {${69}}  ];
-            ]
-          ))(fun xs ys -> (
-            let thin = stroke 0.5pt Color.black in
-            let thick = stroke 1pt Color.black in
-              match (ys, List.reverse ys) with
-              | (y0 :: y1 :: y2 :: _, ylast :: _) ->
-                  ( match (xs, List.reverse xs) with
-                    | (x0 :: x1 :: _ :: x3 :: _, xlast :: _) ->
-                        let gsY1 =
-                          [y1; y2] |> List.map (fun y ->
+                          [y1, y2] |> List.map (fun y ->
                             thin (Gr.line (x0, y) (xlast, y)))
                         in
                         let gsY2 =
-                          [y0; ylast] |> List.map (fun y ->
+                          [y0, ylast] |> List.map (fun y ->
                             thick (Gr.line (x0, y) (xlast, y)))
                         in
                         let gsX =
-                          [x1; x3] |> List.map (fun x ->
+                          [x1, x3] |> List.map (fun x ->
                             thin (Gr.line (x, y0) (x, ylast)))
                         in
                         List.concat [
-                          [ thin (Gr.line (x0, y1) (x1, y2)) ];
-                          gsX; gsY1; gsY2;
-                        ]
+                          [ thin (Gr.line (x0, y1) (x1, y2)) ],
+                          gsX, gsY1, gsY2,
+                        ] |> unite-graphics
 
-                    | _ -> []
-                  )
-              | _ -> []
-          )); }
-        >
-      }
-    >
-    +section{画像}<
-      +p{
-        まだ幾分か簡素であるものの，\SATySFi;は
-        （ベクタでない，ピクセルが四方に並んだ）画像を取り扱う方法も備えている．
-        画像のデータがもつ型として\type(Type.(image));型が用意されており，
-        以下のようなプリミティヴを使うことができる：
+                    | _ -> Gr.empty
+                    end
 
-        \val-explain?:(`load-image`)({load-image})%
-          (Type.(string --> image)) {
-            与えられたパスの画像を読み込む．
-            現在は色空間がCYMKでないJPEGのみ対応している．
-            ファイルが存在しない場合は実行時エラーを出して終了する．
-          }%
+                | _ -> Gr.empty
+                end
+            )); }
+          >
+        }
+      >
+      +section{画像}<
+        +p{
+          まだ幾分か簡素であるものの，\SATySFi;は
+          （ベクタでない，ピクセルが四方に並んだ）画像を取り扱う方法も備えている．
+          画像のデータがもつ型として\type(Type.(image));型が用意されており，
+          以下のようなプリミティヴを使うことができる：
 
-        \val-explain?:(`load-pdf-image`)({load-pdf-image})%
-          (Type.(string --> (int --> image))) {
-            第1引数に与えられたパスのPDFを読み込み，
-            第2引数に与えられたページ番号の内容を画像として返す．
-            ページ番号は最初のページを ${1} とする．
-            与えられたファイルが存在しなかったり，
-            与えられたページ番号のページが存在しない場合は
-            実行時エラーを出して終了する．
-          }%
+          \val-explain?(index = `load-image`)({load-image})%
+            (Type.(string --> image)) {
+              与えられたパスの画像を読み込む．
+              現在は色空間がCYMKでないJPEGのみ対応している．
+              ファイルが存在しない場合は実行時エラーを出して終了する．
+            }%
 
-        \val-explain?:(`use-image-by-width`)({use-image-by-width})%
-          (Type.(image --> (length --> inline-boxes))) {
-            第1引数に与えられた画像を第2引数に与えられた長さを幅とする寸法で
-            インラインボックス列として返す．
-          }%
-      }
-    >
->
+          \val-explain?(index = `load-pdf-image`)({load-pdf-image})%
+            (Type.(string --> (int --> image))) {
+              第1引数に与えられたパスのPDFを読み込み，
+              第2引数に与えられたページ番号の内容を画像として返す．
+              ページ番号は最初のページを ${1} とする．
+              与えられたファイルが存在しなかったり，
+              与えられたページ番号のページが存在しない場合は
+              実行時エラーを出して終了する．
+            }%
+
+          \val-explain?(index = `use-image-by-width`)({use-image-by-width})%
+            (Type.(image --> (length --> inline-boxes))) {
+              第1引数に与えられた画像を第2引数に与えられた長さを幅とする寸法で
+              インラインボックス列として返す．
+            }%
+        }
+      >
+  >
+end

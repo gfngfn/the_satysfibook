@@ -1,309 +1,318 @@
 % -*- coding: utf-8 -*-
-@import: settings
+use package open Stdlib
+use package open Math
+use package open Itemize
+use open BookClass of `book-class`
+use open Settings of `settings`
 
-let page-breaking = '<
-  +p{
-    ページ分割は，
-    おそらく\SATySFi;の機構の中でも最も理解が難しい部分だろう．
-    処理の概要自体はブロックボックス列になった文書の全内容を適切な長さで切り分けて
-    各ページの内容にするというだけなのだが，
-    まともな文書をつくるにはページ分割に伴って種々の手続き的処理を行なう必要があり，
-    したがってクラスファイルを開発するには避けて通れない道である．
-    まず，ページ分割処理に相当するプリミティヴは
-
-    \val({page-break})(Type.(page --> (tymtausub ${2} --> (tymtausub ${3} --> (block-boxes --> document)))));%
-
-    である．\type(Type.(tymtausub ${2}));と\type(Type.(tymtausub ${3}));は
-    やや複雑なため後述するが，
-    これらの型がつく第2・第3引数を置いておけば
-    \codem{page-break}のインターフェイスは単純極まりないもので，
-    第1引数は紙面のサイズ，第4引数はページ分割対象となるブロックボックス列である．
-    \type(Type.page);型は
-
-    \d-code(```
-      type page =
-        | A0Paper | A1Paper | A2Paper | A3Paper | A4Paper | A5Paper
-        | USLetter | USLegal
-        | UserDefinedPaper of length * length
-    ```);%
-
-    で定義されるようなデータ型で，
-    \codem{A4Paper}などのコンストラクタが
-    それぞれ何を表すのかは想像のとおりである\footnote{
-      正直なところ紙面のサイズ指定は
-      \type(Type.(product [length; length]));型で十分で，
-      \codem{A4Paper}などに相当する値は
-
-      \val({Paper.a4})(Type.(product [length; length]));%
-
-      のようにパッケージレヴェルで与えればよかったのだが，
-      過去の阿呆な著者はこんな形式化をしてしまった．
-      おそらく最も近い将来の非互換な変更でこの\type(Type.page);型は姿を消すだろう．
-    }．
-    要するに，ひとまず最も大雑把に言えば，
-    \codem{page-break}とは第4引数に与えられたブロックボックス列を
-    第1引数に与えられた紙面の大きさに基づいてページ分割を行なうプリミティヴ，
-    ということになる．
-    ただし，これだけでは説明としてあまりにも語弊が大きいので，
-    以降順次詳細に説明する．
-  }
-  +p{
-    まず注目すべきは\codem{page-break}の返り値の型\type(Type.document);だ．
-    この型は\codem{page-break}以外のプリミティヴには返り値の型として一切現れず，
-    したがって\type(Type.document);型の値を構築することは
-    本質的に\codem{page-break}によってしかできないようになっている．
-    \SATySFi;は文書ファイルにつく型が\type(Type.document);型であることを型検査時に要請するので，
-    クラスファイルの奥底には必ず\codem{page-break}があって\footnote{
-      ユーザに直接\codem{page-break}を書かせるような病的なクラスファイルなら
-      \codem{page-break}を含まないかもしれないが，
-      そんなクラスファイルをつくるような必要はほぼない．
-    }，
-    そこでユーザが与えた種々の情報をもとに組み上げられたブロックボックス列に
-    ページ分割処理を施すための記述が為されている．
-    \pkg{stdjareport}クラスに基づいて文書を作成するときに書いていた
-
-    \d-code(```
-      @require: stdjareport
-
-      document (|
-        （文書情報）
-      |) '<
-        （内容）
-      >
-    ```);%
-
-    の\codem{document}は実は単なる函数であり，上の記述は
-    \codem{document}という函数の適用である．\codem{document}函数は
-
-    \quote{
-      \type(Type.(forall-kinded ${\alpha}
-        [
-          ({title}, inline-text);
-          ({author}, inline-text);
-        ]
-        (tymalpha --> (block-text --> document))));
-    }%
-
-    という型をもつので，タイトルおよび著者を記述したレコードを第1引数に，
-    文書内容のブロックテキストを第2引数に受け取り，
-    最終的に\type(Type.document);型の値を返すということになっているのである．
-  }
-  +p{
-    さて，後回しにしていた\type(Type.(tymtausub ${2}));の話である．
-    これは以下のような型だ：
-
-    \quote{
-      \type(Type.(
-        record [({page-number}, int)] -->
-          record [({text-height}, length); ({text-origin}, point)]
-      ));
-    }%
-
-    ここから，ひとまず\codem{page-break}に与える第2引数は
-    レコードを受け取ってレコードを返す函数であることがわかる．
-    この函数は，ページ分割処理の最中に ${\paren{n - 1}} ページまでの内容が確定し，
-    今まさに残りのブロックボックス列から ${n} ページ目の内容を切り分ける箇所を
-    探し始めるというときに
-    \codem{(\| page-number = \meta{n}\; \|)}
-    というレコードが渡されることで呼び出され，
-    \codem{(\| text-height = \meta{h}\; text-origin = (\meta{x}, \meta{y})\; \|)}
-    という形の値を返すことで
-
-    \listing{
-      * ${h}：\quad;
-          ${n} ページ目の内容のテキストの領域の段落方向の長さ
-      * ${\tuple{|x|y|}}：\quad;
-          実際に切り分けられた内容を配置するときの左上の座標
-    }%
-
-    という情報をページ分割処理を担う機構に教える．
-    ただし，グラフィックスの座標系とは異なり，
-    ここでの ${\tuple{|x|y|}} の ${y} は
-    紙面の左上を原点とし下向きを ${+y} 方向とする座標系に基づく値なので
-    注意されたい．
-    どのページも同じ地点から同じ長さだけ本文が記述されているような文書を出力したいなら
-    ${n} によらず同一の ${h} と ${\tuple{|x|y|}} を返すような函数にすればよいし，
-    ページの左右で（綴じしろなどの都合で）余白を変えたい場合は
-    ${n} の偶奇で異なる値を返すような函数にすればよいだろう．
-  }
-  +p{
-    同様に，\codem{page-break}の第3引数につく型である
-    \type(Type.(tymtausub ${3}));についても述べると，
-    以下のようなものである：
-
-    \quote{
-      \type(Type.(
-        record [({page-number}, int)] -->
-          record [
-            ({header-content}, block-boxes);
-            ({header-origin}, point);
-            ({footer-content}, block-boxes);
-            ({footer-origin}, point);
-          ]
-      ));
-    }%
-
-    やはりレコードを受け取ってレコードを返す函数の型である．
-    \codem{page-break}の第3引数に指定された函数は，
-    第 ${n} ページの内容が確定し，
-    後述するようなページ内の “フック処理” がすべて終了したときに
-    \codem{(\| page-number = \meta{n}\; \|)}
-    というレコードが渡されることで呼び出され，
-
-    \d-codem{
-      (\|
-      \new-line;\quad;
-      header-content = \metasub(${1}){bb}\;
-      header-origin = (\metasub(${1}){x}, \metasub(${1}){y})\;
-      \new-line;\quad;
-      footer-content = \metasub(${2}){bb}\;
-      footer-origin = (\metasub(${2}){x}, \metasub(${2}){y})\;
-      \new-line;
-      \|)
-    }%
-
-    という形のレコードを返すことで
-
-    \listing{
-      * ${\tuple{|x_1|y_1|}} を左上としてブロックボックス列 ${bb_1} をヘッダとして描く
-      * ${\tuple{|x_2|y_2|}} を左上としてブロックボックス列 ${bb_2} をフッタとして描く
-    }%
-
-    という情報を与える．
-    上で説明した第2引数と同じく，
-    ここで返す座標も左上を原点とし下向きを ${+y} 方向とする座標系であるので注意されたい．
-    この座標系を用いるのは\codem{page-break}の第2・第3引数のみである．
-  }
-  +p{
-    以上がプリミティヴ\codem{page-break}の仕様なのだが，
-    ほんの少しつけ加えるとすれば，それは “実際に行分割が行なわれるタイミング” についてである．
-    実は “\codem{page-break}自体がページ分割処理をしている” わけではなく，
-    文書全体が\type(Type.document);型の値として返された時，
-    初めてページ分割処理が起動する．
-    言うなれば，\type(Type.document);型の値とは
-    最終的なページ分割に関わる情報を実際にページ分割を行なわずに “凍結” したものである．
-    したがって，最終的に返される\type(Type.document);型の値以外に
-    \type(Type.document);型の値をつくるような処理を書いたとしても，
-    それが実際にページ分割されることはない．
-    そもそも\type(Type.document);型の値を加工するようなプリミティヴは一切ないので，
-    PDFに出力する内容を返す以外で
-    \codem{page-break}によって\type(Type.document);型の値をつくる意味はなく，
-    意味があるとすればそれは返り値を使わずに
-    ページ分割時の “副作用” だけ起こすことを意図したものであろうが，
-    それもできないようになっているのである\footnote{
-      できないようになっている理由は特にないので，
-      必要があれば将来の非互換な変更で仕様を変え，
-      “\codem{page-break}自体がページ分割処理をする”
-      ようにしてもよいかもしれない．
-    }．
-  }
-  +section{ページ分割に関連するプリミティヴ}<
+module PageBreaking = struct
+  val page-breaking =
+    let open Book in
+    let open Pervasives in
+  '<
     +p{
-      ページ分割に関する処理を行なうためのプリミティヴがいくつかあるので，
-      ここで紹介する．
+      ページ分割は，
+      おそらく\SATySFi;の機構の中でも最も理解が難しい部分だろう．
+      処理の概要自体はブロックボックス列になった文書の全内容を適切な長さで切り分けて
+      各ページの内容にするというだけなのだが，
+      まともな文書をつくるにはページ分割に伴って種々の手続き的処理を行なう必要があり，
+      したがってクラスファイルを開発するには避けて通れない道である．
+      まず，ページ分割処理に相当するプリミティヴは
 
-      \val-explain?:(`clear-page`)({clear-page})%
-        (Type.(block-boxes)) {
-          強制的に改ページする．
-          ページ分割される対象ではない箇所に挿入されている場合は
-          \codem{block-nil}と等価である．
-        }%
+      \val({page-break})(Type.(page --> (tymtausub ${2} --> (tymtausub ${3} --> (block-boxes --> document)))));%
 
-      \val-explain?:(`add-footnote`)({add-footnote})%
-        (Type.(block-boxes --> inline-boxes)) {
-          \codem{add-footnote \meta{bb}}で
-          ブロックボックス列\codem{\meta{bb}}を脚註として挿入する．
-          返り値は\type(Type.inline-boxes);型で，
-          この返り値のインラインボックス列を挿入した場所に関連づけられて
-          ページ分割処理時に脚註の挿入されるページが決まる．
-          インラインボックス列としての効能自体は
-          \codem{inline-nil}と同等である．
-        }%
-
-      \val-explain?:(`hook-page-break`)({hook-page-break})%
-        (Type.(((record [({page-number}, int)] --> (point --> unit))) --> inline-boxes)) {
-          \codem{hook-page-break \meta{f}}の形で使う．
-          返り値はインラインボックス列であり，組版上の効能は\codem{inline-nil}と同等なのだが，
-          ページ分割処理の最中にこれが挿入されている箇所がどのページに含まれるか確定したときに
-          “フック函数” である\codem{\meta{f}}が起動される．
-          同一ページ内に複数の “フック函数” が仕込まれている場合，
-          ページ内容上で手前にあるものから順に起動される．
-          この “フック” 函数の潜んだインラインボックス列が
-          ページ分割の結果 ${n} ページ目に含まれることになり，
-          その参照点が ${\tuple{|x|y|}} であったとき，
-          \codem{\meta{f}}には第1引数として
-          \codem{(\| page-number = \meta{n}\; \|)}
-          が，第2引数として
-          \codem{(\meta{x}, \meta{y})}
-          が渡されることで起動される．
-          そしてそれらの引数の値を用いてこの\codem{\meta{f}}の “函数の中身” で
-          ページ番号に基づく相互参照の紐づけを新たに登録したりといった
-          様々な “副作用” が起こせる，というわけである．
-        }%
-
-      \ref-chapter(`graphics`);で説明した
-      「グラフィックスの評価はページ分割時に行なわれる」という話は，
-      実はこの\codem{hook-page-break}と同様である．
-      \codem{inline-graphics}の第4引数など，
-      参照点を受け取ってグラフィックスを返す類いの函数は，
-      \codem{hook-page-break}による “フック函数” と同じタイミングで評価が起動するのである．
-    }
-  >
-  +section{クラスファイルの基礎}<
-    +p{
-      さて，ページ分割処理について把握したところで
-      クラスファイルを創ろうと軽く思い立ったとき，
-      ふと今まで特に意識していなかったことに気づくかもしれない：\quad;
-      “最も外側の” テキスト処理文脈はどこから来るのだろう？\quad;
-      これはごく単純で，次のようなプリミティヴによって受け取れる：
-
-      \val-explain?:(`get-initial-context`)({get-initial-context})%
-        (Type.(length --> (cmdI [math] --> context))) {
-          デフォルトのテキスト処理文脈を返す．
-          第1引数は段落幅を，
-          第2引数はインラインテキスト中に現れた数式に適用するコマンドを
-          \codem{set-math-command}と同じ要領で与える．
-        }%
-
-      段落幅を指定できるのはこの\codem{get-initial-context}のみである．
-      “まともな” クラスファイルの中にはこの\codem{get-initial-context}が必ずどこかにあり，
-      これが返したテキスト処理文脈を適宜加工して “最も外側の” テキスト処理文脈としているのである．
-    }
-    +example{
-      “多少なりともまともに使える，実質的に最小のクラスファイル” は以下のように定義できる：
+      である．\type(Type.(tymtausub ${2}));と\type(Type.(tymtausub ${3}));は
+      やや複雑なため後述するが，
+      これらの型がつく第2・第3引数を置いておけば
+      \codem{page-break}のインターフェイスは単純極まりないもので，
+      第1引数は紙面のサイズ，第4引数はページ分割対象となるブロックボックス列である．
+      \type(Type.page);型は
 
       \d-code(```
-        let-inline ctx \math m =
-          script-guard Latin (embed-math ctx m)
-
-        let-block ctx +p it =
-          line-break true true ctx
-            (read-inline ctx it ++ inline-fil)
-
-        let document bt =
-          let ctx =
-            get-initial-context 440pt (command \math)
-              |> set-dominant-narrow-script Latin
-          in
-          let bb = read-block ctx bt in
-          page-break A4Paper
-            (fun _ -> (|
-              text-origin = (80pt, 100pt);
-              text-height = 630pt;
-            |))
-            (fun _ -> (|
-              header-origin  = (0pt, 0pt);
-              header-content = block-nil;
-              footer-origin  = (0pt, 0pt);
-              footer-content = block-nil;
-            |))
-            bb
+        type page =
+          | A0Paper | A1Paper | A2Paper | A3Paper | A4Paper | A5Paper
+          | USLetter | USLegal
+          | UserDefinedPaper of length * length
       ```);%
 
-      このクラスファイルの下では，
-      ユーザが新たにコマンドを定義しない限り，
-      \codem{+p}を用いてひたすら段落が並べられたブロックテキストを
-      \codem{document}の引数に渡した文書しか記述することができない．
+      で定義されるようなデータ型で，
+      \codem{A4Paper}などのコンストラクタが
+      それぞれ何を表すのかは想像のとおりである\footnote{
+        正直なところ紙面のサイズ指定は
+        \type(Type.(product [length, length]));型で十分で，
+        \codem{A4Paper}などに相当する値は
+
+        \val({Paper.a4})(Type.(product [length, length]));%
+
+        のようにパッケージレヴェルで与えればよかったのだが，
+        過去の阿呆な著者はこんな形式化をしてしまった．
+        おそらく最も近い将来の非互換な変更でこの\type(Type.page);型は姿を消すだろう．
+      }．
+      要するに，ひとまず最も大雑把に言えば，
+      \codem{page-break}とは第4引数に与えられたブロックボックス列を
+      第1引数に与えられた紙面の大きさに基づいてページ分割を行なうプリミティヴ，
+      ということになる．
+      ただし，これだけでは説明としてあまりにも語弊が大きいので，
+      以降順次詳細に説明する．
     }
+    +p{
+      まず注目すべきは\codem{page-break}の返り値の型\type(Type.document);だ．
+      この型は\codem{page-break}以外のプリミティヴには返り値の型として一切現れず，
+      したがって\type(Type.document);型の値を構築することは
+      本質的に\codem{page-break}によってしかできないようになっている．
+      \SATySFi;は文書ファイルにつく型が\type(Type.document);型であることを型検査時に要請するので，
+      クラスファイルの奥底には必ず\codem{page-break}があって\footnote{
+        ユーザに直接\codem{page-break}を書かせるような病的なクラスファイルなら
+        \codem{page-break}を含まないかもしれないが，
+        そんなクラスファイルをつくるような必要はほぼない．
+      }，
+      そこでユーザが与えた種々の情報をもとに組み上げられたブロックボックス列に
+      ページ分割処理を施すための記述が為されている．
+      \pkg{stdjareport}クラスに基づいて文書を作成するときに書いていた
+
+      \d-code(```
+        @require: stdjareport
+
+        document (|
+          （文書情報）
+        |) '<
+          （内容）
+        >
+      ```);%
+
+      の\codem{document}は実は単なる函数であり，上の記述は
+      \codem{document}という函数の適用である．\codem{document}函数は
+
+      \quote{
+        \type(Type.(forall-kinded ${\alpha}
+          [
+            ({title}, inline-text),
+            ({author}, inline-text),
+          ]
+          (tymalpha --> (block-text --> document))));
+      }%
+
+      という型をもつので，タイトルおよび著者を記述したレコードを第1引数に，
+      文書内容のブロックテキストを第2引数に受け取り，
+      最終的に\type(Type.document);型の値を返すということになっているのである．
+    }
+    +p{
+      さて，後回しにしていた\type(Type.(tymtausub ${2}));の話である．
+      これは以下のような型だ：
+
+      \quote{
+        \type(Type.(
+          record [({page-number}, int)] -->
+            record [({text-height}, length), ({text-origin}, point)]
+        ));
+      }%
+
+      ここから，ひとまず\codem{page-break}に与える第2引数は
+      レコードを受け取ってレコードを返す函数であることがわかる．
+      この函数は，ページ分割処理の最中に ${\paren{n - 1}} ページまでの内容が確定し，
+      今まさに残りのブロックボックス列から ${n} ページ目の内容を切り分ける箇所を
+      探し始めるというときに
+      \codem{(\| page-number = \meta{n}\; \|)}
+      というレコードが渡されることで呼び出され，
+      \codem{(\| text-height = \meta{h}\; text-origin = (\meta{x}, \meta{y})\; \|)}
+      という形の値を返すことで
+
+      \listing{
+        * ${h}：\quad;
+            ${n} ページ目の内容のテキストの領域の段落方向の長さ
+        * ${\tuple{|x|y|}}：\quad;
+            実際に切り分けられた内容を配置するときの左上の座標
+      }%
+
+      という情報をページ分割処理を担う機構に教える．
+      ただし，グラフィックスの座標系とは異なり，
+      ここでの ${\tuple{|x|y|}} の ${y} は
+      紙面の左上を原点とし下向きを ${+y} 方向とする座標系に基づく値なので
+      注意されたい．
+      どのページも同じ地点から同じ長さだけ本文が記述されているような文書を出力したいなら
+      ${n} によらず同一の ${h} と ${\tuple{|x|y|}} を返すような函数にすればよいし，
+      ページの左右で（綴じしろなどの都合で）余白を変えたい場合は
+      ${n} の偶奇で異なる値を返すような函数にすればよいだろう．
+    }
+    +p{
+      同様に，\codem{page-break}の第3引数につく型である
+      \type(Type.(tymtausub ${3}));についても述べると，
+      以下のようなものである：
+
+      \quote{
+        \type(Type.(
+          record [({page-number}, int)] -->
+            record [
+              ({header-content}, block-boxes),
+              ({header-origin}, point),
+              ({footer-content}, block-boxes),
+              ({footer-origin}, point),
+            ]
+        ));
+      }%
+
+      やはりレコードを受け取ってレコードを返す函数の型である．
+      \codem{page-break}の第3引数に指定された函数は，
+      第 ${n} ページの内容が確定し，
+      後述するようなページ内の “フック処理” がすべて終了したときに
+      \codem{(\| page-number = \meta{n}\; \|)}
+      というレコードが渡されることで呼び出され，
+
+      \d-codem{
+        (\|
+        \new-line;\quad;
+        header-content = \metasub(${1}){bb}\;
+        header-origin = (\metasub(${1}){x}, \metasub(${1}){y})\;
+        \new-line;\quad;
+        footer-content = \metasub(${2}){bb}\;
+        footer-origin = (\metasub(${2}){x}, \metasub(${2}){y})\;
+        \new-line;
+        \|)
+      }%
+
+      という形のレコードを返すことで
+
+      \listing{
+        * ${\tuple{|x_1|y_1|}} を左上としてブロックボックス列 ${bb_1} をヘッダとして描く
+        * ${\tuple{|x_2|y_2|}} を左上としてブロックボックス列 ${bb_2} をフッタとして描く
+      }%
+
+      という情報を与える．
+      上で説明した第2引数と同じく，
+      ここで返す座標も左上を原点とし下向きを ${+y} 方向とする座標系であるので注意されたい．
+      この座標系を用いるのは\codem{page-break}の第2・第3引数のみである．
+    }
+    +p{
+      以上がプリミティヴ\codem{page-break}の仕様なのだが，
+      ほんの少しつけ加えるとすれば，それは “実際に行分割が行なわれるタイミング” についてである．
+      実は “\codem{page-break}自体がページ分割処理をしている” わけではなく，
+      文書全体が\type(Type.document);型の値として返された時，
+      初めてページ分割処理が起動する．
+      言うなれば，\type(Type.document);型の値とは
+      最終的なページ分割に関わる情報を実際にページ分割を行なわずに “凍結” したものである．
+      したがって，最終的に返される\type(Type.document);型の値以外に
+      \type(Type.document);型の値をつくるような処理を書いたとしても，
+      それが実際にページ分割されることはない．
+      そもそも\type(Type.document);型の値を加工するようなプリミティヴは一切ないので，
+      PDFに出力する内容を返す以外で
+      \codem{page-break}によって\type(Type.document);型の値をつくる意味はなく，
+      意味があるとすればそれは返り値を使わずに
+      ページ分割時の “副作用” だけ起こすことを意図したものであろうが，
+      それもできないようになっているのである\footnote{
+        できないようになっている理由は特にないので，
+        必要があれば将来の非互換な変更で仕様を変え，
+        “\codem{page-break}自体がページ分割処理をする”
+        ようにしてもよいかもしれない．
+      }．
+    }
+    +section{ページ分割に関連するプリミティヴ}<
+      +p{
+        ページ分割に関する処理を行なうためのプリミティヴがいくつかあるので，
+        ここで紹介する．
+
+        \val-explain?(index = `clear-page`)({clear-page})%
+          (Type.(block-boxes)) {
+            強制的に改ページする．
+            ページ分割される対象ではない箇所に挿入されている場合は
+            \codem{block-nil}と等価である．
+          }%
+
+        \val-explain?(index = `add-footnote`)({add-footnote})%
+          (Type.(block-boxes --> inline-boxes)) {
+            \codem{add-footnote \meta{bb}}で
+            ブロックボックス列\codem{\meta{bb}}を脚註として挿入する．
+            返り値は\type(Type.inline-boxes);型で，
+            この返り値のインラインボックス列を挿入した場所に関連づけられて
+            ページ分割処理時に脚註の挿入されるページが決まる．
+            インラインボックス列としての効能自体は
+            \codem{inline-nil}と同等である．
+          }%
+
+        \val-explain?(index = `hook-page-break`)({hook-page-break})%
+          (Type.(((record [({page-number}, int)] --> (point --> unit))) --> inline-boxes)) {
+            \codem{hook-page-break \meta{f}}の形で使う．
+            返り値はインラインボックス列であり，組版上の効能は\codem{inline-nil}と同等なのだが，
+            ページ分割処理の最中にこれが挿入されている箇所がどのページに含まれるか確定したときに
+            “フック函数” である\codem{\meta{f}}が起動される．
+            同一ページ内に複数の “フック函数” が仕込まれている場合，
+            ページ内容上で手前にあるものから順に起動される．
+            この “フック” 函数の潜んだインラインボックス列が
+            ページ分割の結果 ${n} ページ目に含まれることになり，
+            その参照点が ${\tuple{|x|y|}} であったとき，
+            \codem{\meta{f}}には第1引数として
+            \codem{(\| page-number = \meta{n}\; \|)}
+            が，第2引数として
+            \codem{(\meta{x}, \meta{y})}
+            が渡されることで起動される．
+            そしてそれらの引数の値を用いてこの\codem{\meta{f}}の “函数の中身” で
+            ページ番号に基づく相互参照の紐づけを新たに登録したりといった
+            様々な “副作用” が起こせる，というわけである．
+          }%
+
+        \ref-chapter(`graphics`);で説明した
+        「グラフィックスの評価はページ分割時に行なわれる」という話は，
+        実はこの\codem{hook-page-break}と同様である．
+        \codem{inline-graphics}の第4引数など，
+        参照点を受け取ってグラフィックスを返す類いの函数は，
+        \codem{hook-page-break}による “フック函数” と同じタイミングで評価が起動するのである．
+      }
+    >
+    +section{クラスファイルの基礎}<
+      +p{
+        さて，ページ分割処理について把握したところで
+        クラスファイルを創ろうと軽く思い立ったとき，
+        ふと今まで特に意識していなかったことに気づくかもしれない：\quad;
+        “最も外側の” テキスト処理文脈はどこから来るのだろう？\quad;
+        これはごく単純で，次のようなプリミティヴによって受け取れる：
+
+        \val-explain?(index = `get-initial-context`)({get-initial-context})%
+          (Type.(length --> (cmdI [math-text] --> context))) {
+            デフォルトのテキスト処理文脈を返す．
+            第1引数は段落幅を，
+            第2引数はインラインテキスト中に現れた数式に適用するコマンドを
+            \codem{set-math-command}と同じ要領で与える．
+          }%
+
+        段落幅を指定できるのはこの\codem{get-initial-context}のみである．
+        “まともな” クラスファイルの中にはこの\codem{get-initial-context}が必ずどこかにあり，
+        これが返したテキスト処理文脈を適宜加工して “最も外側の” テキスト処理文脈としているのである．
+      }
+      +example{
+        “多少なりともまともに使える，実質的に最小のクラスファイル” は以下のように定義できる：
+
+        \d-code(```
+          let-inline ctx \math m =
+            script-guard Latin (embed-math ctx m)
+
+          let-block ctx +p it =
+            line-break true true ctx
+              (read-inline ctx it ++ inline-fil)
+
+          let document bt =
+            let ctx =
+              get-initial-context 440pt (command \math)
+                |> set-dominant-narrow-script Latin
+            in
+            let bb = read-block ctx bt in
+            page-break A4Paper
+              (fun _ -> (|
+                text-origin = (80pt, 100pt);
+                text-height = 630pt;
+              |))
+              (fun _ -> (|
+                header-origin  = (0pt, 0pt);
+                header-content = block-nil;
+                footer-origin  = (0pt, 0pt);
+                footer-content = block-nil;
+              |))
+              bb
+        ```);%
+
+        このクラスファイルの下では，
+        ユーザが新たにコマンドを定義しない限り，
+        \codem{+p}を用いてひたすら段落が並べられたブロックテキストを
+        \codem{document}の引数に渡した文書しか記述することができない．
+      }
+    >
   >
->
+end

@@ -1,251 +1,240 @@
 % -*- coding: utf-8 -*-
-@import: settings
+use package open Stdlib
+use package open Code
+use package open Itemize
+use package open Math
+use open BookClass of `book-class`
+use open Settings of `settings`
 
-let overall = '<
-  +p{
-    \SATySFi;のおおよその用法は既に\ref-chapter(`getting-started`);で説明したが，
-    もしかすると他のマークアップ言語ないし組版処理システムではあまり意識することのない
-    “インライン” なる概念と “ブロック” なる概念の区別を不思議に感じたかもしれない．
-    この区別は\SATySFi;がどのように組版処理の工程を定式化して扱っているかに起因しており，
-    本章ではその定式化を概観することにする．
-    \SATySFi;での組版処理工程の定式化は，各工程に対応するプリミティヴに
-    どのように型をつけて静的な検査を実現しているかという点とも密接に関わってくるので，
-    是非\ref-chapter(`advanced-command-definition`);と併せて読んでいただきたい．
-  }
-  +p{
-    模式的に描くと，\SATySFi;の全体像は\ref-figure(`overall-structure`);のようになっている．
-    \figure?:(`overall-structure`){\SATySFi;の全体像}<
-      +centered-graphics(14cm)(15cm)(fun r -> (
-        let xL = 2.25cm in
-        let xF = 4cm in
-        let xM = 6cm in
-        let xB = 8.5cm in
-        let xB2 = 12.75cm in
-        let hwF = 1.25cm in
-        let hwB = 1.75cm in
-        let framef path =
-          [
-            fill (Gray(0.875)) path;
-            dashed-stroke 0.5pt (3pt, 2pt, 0pt) (Gray(0.5)) path;
-          ]
-        in
-        List.concat [
-          framef (Gr.rectangle (6.3cm, 2cm) (15cm, 13.25cm));
-          framef (Gr.rectangle (2.625cm, 6.5cm) (5.5cm, 13.25cm));
+module Overall = struct
+  val overall =
+    let open Book in
+    let open Pervasives in
+  '<
+    +p{
+      \SATySFi;のおおよその用法は既に\ref-chapter(`getting-started`);で説明したが，
+      もしかすると他のマークアップ言語ないし組版処理システムではあまり意識することのない
+      “インライン” なる概念と “ブロック” なる概念の区別を不思議に感じたかもしれない．
+      この区別は\SATySFi;がどのように組版処理の工程を定式化して扱っているかに起因しており，
+      本章ではその定式化を概観することにする．
+      \SATySFi;での組版処理工程の定式化は，各工程に対応するプリミティヴに
+      どのように型をつけて静的な検査を実現しているかという点とも密接に関わってくるので，
+      是非\ref-chapter(`advanced-command-definition`);と併せて読んでいただきたい．
+    }
+    +p{
+      模式的に描くと，\SATySFi;の全体像は\ref-figure(`overall-structure`);のようになっている．
+      \figure?(label = `overall-structure`)({\SATySFi;の全体像})<
+        +centered-graphics(14cm)(15cm)(fun r -> (
+          let xL = 2.25cm in
+          let xF = 4cm in
+          let xM = 6cm in
+          let xB = 8.5cm in
+          let xB2 = 12.75cm in
+          let hwF = 1.25cm in
+          let hwB = 1.75cm in
+          let framef path =
+            unite-graphics [
+              fill (Gray(0.875)) path,
+              dashed-stroke 0.5pt (3pt, 2pt, 0pt) (Gray(0.5)) path,
+            ]
+          in
+          unite-graphics [
+            framef (Gr.rectangle (6.3cm, 2cm) (15cm, 13.25cm)),
+            framef (Gr.rectangle (2.625cm, 6.5cm) (5.5cm, 13.25cm)),
 
-          [
 %            stroke 0.5pt Color.black (Gr.rectangle (0cm, 0cm) (15cm, 15cm));
 
-            r#text-leftward (3.5cm, 6cm) {フロントエンド};
-            r#text-leftward (15cm, 1.5cm) {バックエンド};
+            r#text-leftward (3.5cm, 6cm) {フロントエンド},
+            r#text-leftward (15cm, 1.5cm) {バックエンド},
 
-            r#text-centering (xF, 14cm) {入力ソース};
-            r#text-leftward (xL -' 0.125cm, 12cm) {構文エラー};
-            r#text-leftward (xL -' 0.125cm, 11cm) {構文エラー};
-            r#text-leftward (xL -' 0.125cm, 8.5cm) {型エラー};
-          ];
-          structure-arrow-down xF 13.825cm 10.25cm;
-          structure-arrow-left xL xF 12.125cm;
-          structure-arrow-left xL xF 11.125cm;
-          structure-box r hwF (xF, 12cm) {字句解析器};
-          structure-box r hwF (xF, 11cm) {構文解析器};
-          [
-            r#text-centering (xF, 9.75cm) {抽象構文木};
-          ];
-          structure-arrow-down xF 9.5cm 7.5cm;
-          structure-arrow-left xL xF 8.625cm;
-          structure-box r hwF (xF, 8.5cm) {型検査器};
-          [
-            r#text-centering (xF, 7cm){実行時表現};
-          ];
+            r#text-centering (xF, 14cm) {入力ソース},
+            r#text-leftward (xL -' 0.125cm, 12cm) {構文エラー},
+            r#text-leftward (xL -' 0.125cm, 11cm) {構文エラー},
+            r#text-leftward (xL -' 0.125cm, 8.5cm) {型エラー},
 
-          structure-bend
-            (start-path (xF, 6.75cm)
-              |> line-to (xF, 6.5cm)
-              |> bezier-to (xF, 5.5cm) (xM, 5.5cm) (xM, 6.75cm)
-              |> line-to (xM, 13.25cm)
-              |> bezier-to (xM, 14.75cm) (xB, 14.75cm) (xB, 13.5cm)
-              |> line-to (xB, 10cm)
-              |> terminate-path);
-          ( let rect = Gr.rectangle (6.5cm, 13cm) (14.75cm, 5cm) in
-          [
-            fill Color.white rect;
-            stroke 0.5pt Color.black rect;
-            r#text-centering (10.5cm, 12.5cm) {評価器};
-          ]);
+            structure-arrow-down xF 13.825cm 10.25cm,
+            structure-arrow-left xL xF 12.125cm,
+            structure-arrow-left xL xF 11.125cm,
+            structure-box r hwF (xF, 12cm) {字句解析器},
+            structure-box r hwF (xF, 11cm) {構文解析器},
+            r#text-centering (xF, 9.75cm) {抽象構文木},
+            structure-arrow-down xF 9.5cm 7.5cm,
+            structure-arrow-left xL xF 8.625cm,
+            structure-box r hwF (xF, 8.5cm) {型検査器},
+            r#text-centering (xF, 7cm){実行時表現},
 
-          [
-            r#text-centering (xB, 11cm) {インラインテキスト};
-          ];
-          structure-arrow-down xB 10.75cm 9.25cm;
-          structure-box r hwB (xB, 10cm) {インライン変換器};
-          [
-            r#text-centering (xB, 8.75cm) {インラインボックス列};
-          ];
-          structure-arrow-down xB 8.5cm 7cm;
-          structure-box r hwB (xB, 7.75cm) {行分割処理};
+            structure-bend
+              (start-path (xF, 6.75cm)
+                |> line-to (xF, 6.5cm)
+                |> bezier-to (xF, 5.5cm) (xM, 5.5cm) (xM, 6.75cm)
+                |> line-to (xM, 13.25cm)
+                |> bezier-to (xM, 14.75cm) (xB, 14.75cm) (xB, 13.5cm)
+                |> line-to (xB, 10cm)
+                |> terminate-path),
+            ( let rect = Gr.rectangle (6.5cm, 13cm) (14.75cm, 5cm) in
+            unite-graphics [
+              fill Color.white rect,
+              stroke 0.5pt Color.black rect,
+              r#text-centering (10.5cm, 12.5cm) {評価器},
+            ]),
 
-          [
-            r#text-centering (xB2, 10cm) {ブロックテキスト};
-          ];
-          structure-bend
-            (start-path (xB2, 9.75cm)
-              |> line-to (xB2, 8cm)
-              |> bezier-to (xB2, 7cm) (xB2 -' 1cm, 6.625cm) (xB +' 2cm, 6.625cm)
-              |> terminate-path);
-          structure-arrow-left-head (xB +' 2cm, 6.625cm);
-          structure-box r hwB (xB2, 9cm) {ブロック変換器};
+            r#text-centering (xB, 11cm) {インラインテキスト},
+            structure-arrow-down xB 10.75cm 9.25cm,
+            structure-box r hwB (xB, 10cm) {インライン変換器},
+            r#text-centering (xB, 8.75cm) {インラインボックス列},
+            structure-arrow-down xB 8.5cm 7cm,
+            structure-box r hwB (xB, 7.75cm) {行分割処理},
 
-          [
-            r#text-centering (xB, 6.5cm) {ブロックボックス列};
-          ];
-          structure-arrow-down xB 6.25cm 4.25cm;
-          structure-box r hwB (xB, 5.5cm) {ページ分割処理};
+            r#text-centering (xB2, 10cm) {ブロックテキスト},
+            structure-bend
+              (start-path (xB2, 9.75cm)
+                |> line-to (xB2, 8cm)
+                |> bezier-to (xB2, 7cm) (xB2 -' 1cm, 6.625cm) (xB +' 2cm, 6.625cm)
+                |> terminate-path),
+            structure-arrow-left-head (xB +' 2cm, 6.625cm),
+            structure-box r hwB (xB2, 9cm) {ブロック変換器},
 
-          [
-            r#text-centering (xB, 3.75cm) {各ページの内容};
-          ];
-          structure-arrow-down xB 3.5cm 1.5cm;
-          structure-box r hwB (xB, 2.75cm) {PDF出力機構};
-          [
-            r#text-centering (xB, 1cm) {PDF};
-          ];
-        ] |> List.map (shift-graphics (-1cm, 0cm))
-      ));
-    >
-    \SATySFi;処理系の構造は左右に大別されて描かれているが，このうち
-    入力に近い左側を\dfnje{フロントエンド}{front-end}，
-    右側を\dfnje{バックエンド}{back-end}と呼ぶ．
-  }
-  +section{フロントエンド}<
-    +p{
-      フロントエンドは入力側から順に
-      \dfnje{字句解析器}{lexer}，\dfnje{構文解析器}{parser}，
-      \dfnje{型検査器}{type checker}からなっている．
-      ソースファイルが\SATySFi;へ渡されると，
-      まず字句解析器にしたがってソースファイルの内容がトークン列に切り分けられる．
-      字句解析器には
+            r#text-centering (xB, 6.5cm) {ブロックボックス列},
+            structure-arrow-down xB 6.25cm 4.25cm,
+            structure-box r hwB (xB, 5.5cm) {ページ分割処理},
 
-      \listing{
-        * プログラムを読み取る状態
-        * インラインテキストを読み取る状態
-        * ブロックテキストを読み取る状態
-        * コメントを読み取る状態
-        * ${\vdots}
-      }%
-
-      といったいくつかの状態があり，
-      ソースファイルを読み取る過程でスタックを用いて括弧の対応などを検査しつつ
-      これらの状態を適宜遷移する．
-      明らかに括弧の対応が取れていなかったり，
-      現在の状態に対して正当なソースファイルで出現するはずのない文字に遭遇したりすると，
-      その時点で
-
-      \console(`
-        ! [Syntax error at Lexer] （エラー位置とその内容）
-      `);%
-
-      という形でエラーが報告される．
-      続いてトークン列化されたデータは構文解析器によって
-      （\SATySFi;の文法にしたがって）抽象構文木に組み上げられる．
-      この時点で構文木に組み上げられないトークン列の組み合わせが見つかった場合は
-
-      \console(`
-        ! [Syntax error at Parser] （エラー位置）
-      `);%
-
-      という形でエラーが報告される．
-      字句解析器でエラーが出るか構文解析器でエラーが出るかには，
-      ユーザにとってはそれほど大きな違いはない．
-      いずれも何らかのミスを含んでいるために抽象構文木に組み上げられないソースファイルが
-      処理系に渡され，型検査器にかけるまでもなく入力がおかしいとわかったため弾かれたということである．
-      ここまでの処理は，ほとんどのマークアップ言語やプログラミング言語に共通の処理である\footnote{
-        字句解析と構文解析でのエラーを区別せず “syntax error” として提示する言語も多い．
-        ちなみに\TeX;処理系は構文解析に相当する処理は行なわないほか，
-        字句解析に相当する処理すら組版処理と同時進行で行なう，言語処理系としてはかなり珍しい方式である．
-        また，ブラウザなどマークアップ言語を扱う処理系が
-        構文に対するエラーを明示的に提示しているのを見た経験は少ないかもしれないが，
-        これは大抵の場合処理系がミスに対してかなり “寛容” につくられていて，
-        なんとかミスを整合させようと何らかの強引な修正を行なうからだ．
-        ちなみに，処理系がミスに “寛容” なのは別に望ましいことではなく，むしろ逆である．
-        それは税関が “寛容” だと密輸が横行するのと同様の意味に於いてであり，
-        実際この世界にはブラウザの “寛容さ” にかまけた
-        杜撰なソースのWebページに溢れている．
-      }．
-      字句解析でも構文解析でもエラーが出ず抽象構文木に組み上げられた入力は，
-      次に型検査器に通されることになる．
-      型検査器は\SATySFi;のフロントエンドに於いて根幹的役割を果たす重要な部分であり，
-      抽象構文木を受け取って\dfnje{型検査}{type checking}\footnote{
-        実際には型検査というよりは\dfnje{型推論}{type inference}と呼ばれる処理を行なっている．
-      }を行ないつつ，同時にその抽象構文木を\dfn{実行時表現}へと変換する\footnote{
-        実行時表現は，単に型情報などが落ちて糖衣構文などが除去された，
-        実行用に少しだけ形式が整えられた抽象構文木と考えてもらって差し支えないが，
-        実際の実装ではバイトコードなどのより低級な表現になっていることもありうる．
-      }．
-      型検査とは，引数の種類や個数が合っていないとか
-      リストと真偽値を足し合わせる計算を記述しているといった “或る種の不整合” が
-      入力に含まれていないかを検査することを指す．
-      ここでの検査に通れば実際に組版処理を行なっている最中に “或る種の不整合” に基づく
-      処理の失敗が起こらないことが（数学的に）保証されており，
-      それゆえに実際に組版処理を行なわずとも入力ミスを素早く検出できるである．
-      何らかの不整合が含まれている場合，型検査器はその不整合を
-
-      \console(`
-        ! [Type Error] （エラー位置とその内容）
-      `);%
-
-      という形で報告する．ユーザはこれにしたがってすみやかに修正することができる．
+            r#text-centering (xB, 3.75cm) {各ページの内容},
+            structure-arrow-down xB 3.5cm 1.5cm,
+            structure-box r hwB (xB, 2.75cm) {PDF出力機構},
+            r#text-centering (xB, 1cm) {PDF},
+          ] |> shift-graphics (-1cm, 0cm)
+        ));
+      >
+      \SATySFi;処理系の構造は左右に大別されて描かれているが，このうち
+      入力に近い左側を\dfnje{フロントエンド}{front-end}，
+      右側を\dfnje{バックエンド}{back-end}と呼ぶ．
     }
-  >
-  +section{バックエンド}<
-    +p{
-      さて，フロントエンドでの各種処理と検査をめでたく通過した入力データは，
-      バックエンドによって実際に組版処理にかけられる．
-      ここでの処理は各コマンドの定義の記述に基づいて各工程を行ったり来たりするので
-      実際には複雑に依存し合っているのだが，
-      概して\ref-figure(`overall-structure`);の右側のような処理を経る．
-      バックエンドでの処理の流れを以下順を追って見ていくことにしよう．
-    }
-    +subsection{インラインボックス列への変換}<
+    +section{フロントエンド}<
       +p{
-        まず型検査を通過して抽象構文木から変換して得られた実行時表現は
-        \dfnje{評価器}{interpreter}に渡され，
-        ここでの評価の過程でインラインテキストになった部分は
-        （各コマンドの定義に基づいて）
-        \dfnje{インライン変換器}{inline converter}にかけられる．
-        変換器では，どのフォントをどんな文字サイズ，どんな文字色で使うかといった
-        “組版処理に必要なテキスト以外の情報” を用いて
-        インラインテキストから\dfnje{インラインボックス列}{inline box row}をつくる．
-        “組版処理に必要なテキスト以外の情報” がどのように指定されるのかについては
-        \ref-section(`text-processing-context`);の
-        \dfnje{テキスト処理文脈}{text-processing context}についての解説で後述するので，今は
-        「コマンド定義の記述とそのコマンドが使われている環境によってそれらの情報が決まる」
-        という程度の認識で構わない．
-        インラインボックス列は，直観的には “既に組まれたテキスト” に相当し，
-        紙面上でどの程度の幅・高さ・深さを占めるかなどのデータも保持している．
-        インラインテキストからインラインボックス列への変換は，
-        \ref-figure(`conversion-to-inline-boxes`);のように表すことができる．
-        「ボックス列」という命名は，この図のような直観から来ている．
-        \figure?:(`conversion-to-inline-boxes`){インラインボックス列への変換}<
-          +centered-graphics(14cm)(6.5cm)(fun r -> (
-            let arrowf = Gr.arrow 2pt Color.black 12pt 10pt 3pt in
-            List.concat [
-              [
-                stroke 0.5pt Color.black (Gr.rectangle (0.5cm, 0cm) (14.5cm, 6.5cm));
-                r#text-centering (7.5cm, 5.25cm) {インラインテキスト};
+        フロントエンドは入力側から順に
+        \dfnje{字句解析器}{lexer}，\dfnje{構文解析器}{parser}，
+        \dfnje{型検査器}{type checker}からなっている．
+        ソースファイルが\SATySFi;へ渡されると，
+        まず字句解析器にしたがってソースファイルの内容がトークン列に切り分けられる．
+        字句解析器には
+
+        \listing{
+          * プログラムを読み取る状態
+          * インラインテキストを読み取る状態
+          * ブロックテキストを読み取る状態
+          * コメントを読み取る状態
+          * ${\vdots}
+        }%
+
+        といったいくつかの状態があり，
+        ソースファイルを読み取る過程でスタックを用いて括弧の対応などを検査しつつ
+        これらの状態を適宜遷移する．
+        明らかに括弧の対応が取れていなかったり，
+        現在の状態に対して正当なソースファイルで出現するはずのない文字に遭遇したりすると，
+        その時点で
+
+        \console(`
+          ! [Syntax error at Lexer] （エラー位置とその内容）
+        `);%
+
+        という形でエラーが報告される．
+        続いてトークン列化されたデータは構文解析器によって
+        （\SATySFi;の文法にしたがって）抽象構文木に組み上げられる．
+        この時点で構文木に組み上げられないトークン列の組み合わせが見つかった場合は
+
+        \console(`
+          ! [Syntax error at Parser] （エラー位置）
+        `);%
+
+        という形でエラーが報告される．
+        字句解析器でエラーが出るか構文解析器でエラーが出るかには，
+        ユーザにとってはそれほど大きな違いはない．
+        いずれも何らかのミスを含んでいるために抽象構文木に組み上げられないソースファイルが
+        処理系に渡され，型検査器にかけるまでもなく入力がおかしいとわかったため弾かれたということである．
+        ここまでの処理は，ほとんどのマークアップ言語やプログラミング言語に共通の処理である\footnote{
+          字句解析と構文解析でのエラーを区別せず “syntax error” として提示する言語も多い．
+          ちなみに\TeX;処理系は構文解析に相当する処理は行なわないほか，
+          字句解析に相当する処理すら組版処理と同時進行で行なう，言語処理系としてはかなり珍しい方式である．
+          また，ブラウザなどマークアップ言語を扱う処理系が
+          構文に対するエラーを明示的に提示しているのを見た経験は少ないかもしれないが，
+          これは大抵の場合処理系がミスに対してかなり “寛容” につくられていて，
+          なんとかミスを整合させようと何らかの強引な修正を行なうからだ．
+          ちなみに，処理系がミスに “寛容” なのは別に望ましいことではなく，むしろ逆である．
+          それは税関が “寛容” だと密輸が横行するのと同様の意味に於いてであり，
+          実際この世界にはブラウザの “寛容さ” にかまけた
+          杜撰なソースのWebページに溢れている．
+        }．
+        字句解析でも構文解析でもエラーが出ず抽象構文木に組み上げられた入力は，
+        次に型検査器に通されることになる．
+        型検査器は\SATySFi;のフロントエンドに於いて根幹的役割を果たす重要な部分であり，
+        抽象構文木を受け取って\dfnje{型検査}{type checking}\footnote{
+          実際には型検査というよりは\dfnje{型推論}{type inference}と呼ばれる処理を行なっている．
+        }を行ないつつ，同時にその抽象構文木を\dfn{実行時表現}へと変換する\footnote{
+          実行時表現は，単に型情報などが落ちて糖衣構文などが除去された，
+          実行用に少しだけ形式が整えられた抽象構文木と考えてもらって差し支えないが，
+          実際の実装ではバイトコードなどのより低級な表現になっていることもありうる．
+        }．
+        型検査とは，引数の種類や個数が合っていないとか
+        リストと真偽値を足し合わせる計算を記述しているといった “或る種の不整合” が
+        入力に含まれていないかを検査することを指す．
+        ここでの検査に通れば実際に組版処理を行なっている最中に “或る種の不整合” に基づく
+        処理の失敗が起こらないことが（数学的に）保証されており，
+        それゆえに実際に組版処理を行なわずとも入力ミスを素早く検出できるである．
+        何らかの不整合が含まれている場合，型検査器はその不整合を
+
+        \console(`
+          ! [Type Error] （エラー位置とその内容）
+        `);%
+
+        という形で報告する．ユーザはこれにしたがってすみやかに修正することができる．
+      }
+    >
+    +section{バックエンド}<
+      +p{
+        さて，フロントエンドでの各種処理と検査をめでたく通過した入力データは，
+        バックエンドによって実際に組版処理にかけられる．
+        ここでの処理は各コマンドの定義の記述に基づいて各工程を行ったり来たりするので
+        実際には複雑に依存し合っているのだが，
+        概して\ref-figure(`overall-structure`);の右側のような処理を経る．
+        バックエンドでの処理の流れを以下順を追って見ていくことにしよう．
+      }
+      +subsection{インラインボックス列への変換}<
+        +p{
+          まず型検査を通過して抽象構文木から変換して得られた実行時表現は
+          \dfnje{評価器}{interpreter}に渡され，
+          ここでの評価の過程でインラインテキストになった部分は
+          （各コマンドの定義に基づいて）
+          \dfnje{インライン変換器}{inline converter}にかけられる．
+          変換器では，どのフォントをどんな文字サイズ，どんな文字色で使うかといった
+          “組版処理に必要なテキスト以外の情報” を用いて
+          インラインテキストから\dfnje{インラインボックス列}{inline box row}をつくる．
+          “組版処理に必要なテキスト以外の情報” がどのように指定されるのかについては
+          \ref-section(`text-processing-context`);の
+          \dfnje{テキスト処理文脈}{text-processing context}についての解説で後述するので，今は
+          「コマンド定義の記述とそのコマンドが使われている環境によってそれらの情報が決まる」
+          という程度の認識で構わない．
+          インラインボックス列は，直観的には “既に組まれたテキスト” に相当し，
+          紙面上でどの程度の幅・高さ・深さを占めるかなどのデータも保持している．
+          インラインテキストからインラインボックス列への変換は，
+          \ref-figure(`conversion-to-inline-boxes`);のように表すことができる．
+          「ボックス列」という命名は，この図のような直観から来ている．
+          \figure?(label = `conversion-to-inline-boxes`)({インラインボックス列への変換})<
+            +centered-graphics(14cm)(6.5cm)(fun r -> (
+              let arrowf = Gr.arrow 2pt Color.black 12pt 10pt 3pt in
+              unite-graphics [
+                stroke 0.5pt Color.black (Gr.rectangle (0.5cm, 0cm) (14.5cm, 6.5cm)),
+                r#text-centering (7.5cm, 5.25cm) {インラインテキスト},
                 r#text-centering (7.5cm, 4.5cm) {
                   \size(20pt){\codem{\{The quick brown fox jumps ${\cdots}\}}}
-                };
-              ];
-              arrowf (7.5cm, 4cm) (7.5cm, 2.5cm);
-              arrowf (9cm, 3.5cm) (7.5cm, 3.25cm);
-              [
+                },
+                arrowf (7.5cm, 4cm) (7.5cm, 2.5cm),
+                arrowf (9cm, 3.5cm) (7.5cm, 3.25cm),
                 r#text-rightward (9.25cm, 3.5cm) {
                   \stack(4cm){
                     | フォント，文字サイズ，
                     | 文字色，${\ldots}
                     |}
-                };
+                },
                 r#text-centering (7.5cm, 1.75cm) {
                   \BoxGraphics.roman{|T|h|e|}%
                   \BoxGraphics.space(10mm);%
@@ -257,41 +246,39 @@ let overall = '<
                   \BoxGraphics.space(10mm);%
                   \BoxGraphics.roman{|j|u|m|p|s|}%
                   \ \size(20pt){${\cdots}}
-                };
-                r#text-centering (7.5cm, 1cm) {インラインボックス列};
-              ];
-            ] |> List.map (shift-graphics (-0.5cm, 0cm))
-          ));
-        >
-      }
-    >
-    +subsection{行分割処理}<
-      +p{
-        さて，テキストからインラインボックス列を生成してしまえば
-        もう組版処理を達成したも同然だろうか？\quad;
-        勿論そんなことはない．
-        古今東西を問わず，長い文章が書かれる際に
-        1行がひたすら切れずに細長く連なっていることはまずなく，
-        装飾性が実用性に圧倒的に優先されるような媒体ではない限り，
-        基本的には適切に行として切り分けた単位で文字が排列されている．
-        すなわち，今度の相手は紙面の幅である．
-        文字の排列を適切に行単位に切り分けて紙面の所望の幅に収める処理を
-        \dfnje{行分割処理}{line breaking}と呼ぶ．
-        行分割処理は，段落の幅や行送りの長さといった各種パラメータを用いて，
-        受け取ったインラインボックス列を適切に切り分けて
-        \dfnje{ブロックボックス列}{block box row}として段落を生成する処理である．
-        ブロックボックス列とは，段落が連なる方向に並んだ（おおよそ行単位の）ボックス列である．
-        行分割処理がインラインボックス列を受け取ってブロックボックス列を返す処理として
-        定式化されていることは，\ref-figure(`line-breaking`);のような直観による．
-        図の下側の1行にあたる横に細長い枠がいわば “ひとつのボックス” であり，
-        それが段落の進む方向に積み重なっているので行分割された後の内容は
-        ブロックボックス列なのである．
-        \figure?:(`line-breaking`){行分割処理の直観}<
-          +centered-graphics(14cm)(8cm)(fun r -> (
-            let arrowf = Gr.arrow 2pt Color.black 12pt 10pt 3pt in
-            List.concat [
-              [
-                stroke 0.5pt Color.black (Gr.rectangle (0.5cm, 0cm) (14.5cm, 8cm));
+                },
+                r#text-centering (7.5cm, 1cm) {インラインボックス列},
+              ] |> shift-graphics (-0.5cm, 0cm)
+            ));
+          >
+        }
+      >
+      +subsection{行分割処理}<
+        +p{
+          さて，テキストからインラインボックス列を生成してしまえば
+          もう組版処理を達成したも同然だろうか？\quad;
+          勿論そんなことはない．
+          古今東西を問わず，長い文章が書かれる際に
+          1行がひたすら切れずに細長く連なっていることはまずなく，
+          装飾性が実用性に圧倒的に優先されるような媒体ではない限り，
+          基本的には適切に行として切り分けた単位で文字が排列されている．
+          すなわち，今度の相手は紙面の幅である．
+          文字の排列を適切に行単位に切り分けて紙面の所望の幅に収める処理を
+          \dfnje{行分割処理}{line breaking}と呼ぶ．
+          行分割処理は，段落の幅や行送りの長さといった各種パラメータを用いて，
+          受け取ったインラインボックス列を適切に切り分けて
+          \dfnje{ブロックボックス列}{block box row}として段落を生成する処理である．
+          ブロックボックス列とは，段落が連なる方向に並んだ（おおよそ行単位の）ボックス列である．
+          行分割処理がインラインボックス列を受け取ってブロックボックス列を返す処理として
+          定式化されていることは，\ref-figure(`line-breaking`);のような直観による．
+          図の下側の1行にあたる横に細長い枠がいわば “ひとつのボックス” であり，
+          それが段落の進む方向に積み重なっているので行分割された後の内容は
+          ブロックボックス列なのである．
+          \figure?(label = `line-breaking`)({行分割処理の直観})<
+            +centered-graphics(14cm)(8cm)(fun r -> (
+              let arrowf = Gr.arrow 2pt Color.black 12pt 10pt 3pt in
+              unite-graphics [
+                stroke 0.5pt Color.black (Gr.rectangle (0.5cm, 0cm) (14.5cm, 8cm)),
                 r#text-centering (7.5cm, 6.5cm) {
                   \BoxGraphics.roman{|T|h|e|}%
                   \BoxGraphics.space(10mm);%
@@ -303,17 +290,15 @@ let overall = '<
                   \BoxGraphics.space(10mm);%
                   \BoxGraphics.roman{|j|u|m|p|s|}%
                   \ \size(20pt){${\cdots}}
-                };
-              ];
-              arrowf (7.5cm, 6cm) (7.5cm, 4cm);
-              arrowf (9cm, 5.25cm) (7.5cm, 5cm);
-              [
+                },
+                arrowf (7.5cm, 6cm) (7.5cm, 4cm),
+                arrowf (9cm, 5.25cm) (7.5cm, 5cm),
                 r#text-rightward (9.25cm, 5.25cm) {
                   \stack(4cm){
                     | 段落の幅，
                     | 行送り，${\ldots}
                     |}
-                };
+                },
                 r#text-centering (7.5cm, 3cm) {
                   \BoxGraphics.justify(8cm){|
                     \BoxGraphics.line{
@@ -337,49 +322,49 @@ let overall = '<
                     }
                   |}
                 }
-              ];
-            ] |> List.map (shift-graphics (-0.5cm, 0cm))
-          ));
-        >
-      }
-      +p{
-        行方向に連なった内容をどの箇所で段落の各行に切り分けるかを決めるのは
-        それほど自明な処理ではない．
-        例えば欧文なら単語中で切り分けることは（ハイフネーションしてよい箇所でない限り）できないし，
-        和文なら鉤括弧の直後や句点の直前といった箇所での行分割を禁止する
-        \dfn{行頭禁則}・\dfn{行末禁則}という制約がある．
-        両端揃えで段落を組む場合は欧文の単語間の空白や和文の字間を
-        （あらかじめ定めた許容範囲内で）適切に伸ばしたり縮めたりして調整する必要があり，
-        \ref-figure(`conversion-to-inline-boxes`);でいえば
-        濃い灰色で示された部分のボックスが横方向に伸縮することになる．
-        そして何より
-        “詰められるだけ前から順に詰めていく” という処理では
-        一般に見栄えのよい段落になるとは限らない．
-        行分割処理がどのように行なわれているかの詳細については
-        \ref-chapter(`line-breaking`);で述べる．
-      }
-    >
-    +subsection{ページ分割処理}<
-      +p{
-        文書の内容がブロックボックス列になっても，
-        PDFとして出力するにはまだ処理すべきことが残っている．
-        紙面の横幅を相手にした後は，紙面の縦幅も相手にすることになるのである\footnote{
-          現在の\SATySFi;は縦書きには対応していないが，
-          縦書きの場合は（横書きと同様の行分割処理とページ分割処理を蹈襲すれば）
-          横幅と縦幅を相手にする順番が逆になる．
-          要するに，横書き・縦書きいずれの場合も文字が進む方向に関する処理が先になり，
-          次いで段落が進む方向の処理が行なわれるのである．
-        }．すなわち，今度は縦方向に連なった段落を適切にページ単位に切り分ける
-        \dfnje{ページ分割処理}{page breaking}が必要になる．
-        ページ分割は行分割と比べると視認上の要請がゆるやかなこともあって
-        切り分け箇所の決定自体は比較的簡素な処理で済む．
-        実際，\SATySFi;のページ分割処理がやっていることは
-        本質的には単に “前から詰められるだけ詰めて切り分ける” 処理である．
-        それでも章題の直後などページが切り分けられるのを避けねばならない箇所はやはりあるので，
-        “各箇所でのページの分割しやすさ” を制御するための仕組みが備わっている．
-        このほか，脚註の挿入などもページ分割時に処理される．
-        ページ分割の詳細についても，章を分けて\ref-chapter(`page-breaking`);で解説する．
-      }
+              ] |> shift-graphics (-0.5cm, 0cm)
+            ));
+          >
+        }
+        +p{
+          行方向に連なった内容をどの箇所で段落の各行に切り分けるかを決めるのは
+          それほど自明な処理ではない．
+          例えば欧文なら単語中で切り分けることは（ハイフネーションしてよい箇所でない限り）できないし，
+          和文なら鉤括弧の直後や句点の直前といった箇所での行分割を禁止する
+          \dfn{行頭禁則}・\dfn{行末禁則}という制約がある．
+          両端揃えで段落を組む場合は欧文の単語間の空白や和文の字間を
+          （あらかじめ定めた許容範囲内で）適切に伸ばしたり縮めたりして調整する必要があり，
+          \ref-figure(`conversion-to-inline-boxes`);でいえば
+          濃い灰色で示された部分のボックスが横方向に伸縮することになる．
+          そして何より
+          “詰められるだけ前から順に詰めていく” という処理では
+          一般に見栄えのよい段落になるとは限らない．
+          行分割処理がどのように行なわれているかの詳細については
+          \ref-chapter(`line-breaking`);で述べる．
+        }
+      >
+      +subsection{ページ分割処理}<
+        +p{
+          文書の内容がブロックボックス列になっても，
+          PDFとして出力するにはまだ処理すべきことが残っている．
+          紙面の横幅を相手にした後は，紙面の縦幅も相手にすることになるのである\footnote{
+            現在の\SATySFi;は縦書きには対応していないが，
+            縦書きの場合は（横書きと同様の行分割処理とページ分割処理を蹈襲すれば）
+            横幅と縦幅を相手にする順番が逆になる．
+            要するに，横書き・縦書きいずれの場合も文字が進む方向に関する処理が先になり，
+            次いで段落が進む方向の処理が行なわれるのである．
+          }．すなわち，今度は縦方向に連なった段落を適切にページ単位に切り分ける
+          \dfnje{ページ分割処理}{page breaking}が必要になる．
+          ページ分割は行分割と比べると視認上の要請がゆるやかなこともあって
+          切り分け箇所の決定自体は比較的簡素な処理で済む．
+          実際，\SATySFi;のページ分割処理がやっていることは
+          本質的には単に “前から詰められるだけ詰めて切り分ける” 処理である．
+          それでも章題の直後などページが切り分けられるのを避けねばならない箇所はやはりあるので，
+          “各箇所でのページの分割しやすさ” を制御するための仕組みが備わっている．
+          このほか，脚註の挿入などもページ分割時に処理される．
+          ページ分割の詳細についても，章を分けて\ref-chapter(`page-breaking`);で解説する．
+        }
+      >
     >
   >
->
+end
