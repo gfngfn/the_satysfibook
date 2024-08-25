@@ -25,15 +25,15 @@ use open Bib of `bib`
 let open Book in
 let open Pervasives in
 document (|
-  title = {The \SATySFi;book（Web公開版 第1版）},
+  title = {The \SATySFi;book（Web公開版 第2版）},
   author = {Takashi SUWA},
   preface = preface,
   bibliography = bibliography,
   top-page = Some(top-page),
   copyright-page = (|
-    title = {The \SATySFi;book（Web公開版 第1版）},
+    title = {The \SATySFi;book（Web公開版 第2版）},
     author = {Takashi SUWA\hskip(5cm);},
-    date = {2018年12月5日},
+    date = {2024年X月Y日},
     contact = {\url{gfngfn.bd\@gmail.com}},
     printed-by = None,
   |),
