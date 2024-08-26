@@ -3,7 +3,7 @@ use package open Code
 use package open Math
 use package open Itemize
 use package open Tabular
-use open BookClass of `book-class`
+use package open BookClass
 use open Settings of `settings`
 
 module Graphics = struct

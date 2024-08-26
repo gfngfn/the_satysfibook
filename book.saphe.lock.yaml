@@ -105,6 +105,37 @@ locks:
     registry_hash_value: 6f2b80e9bb7c4e8af2104999fc25dbb3
     package_name: unidata
     version: 0.0.1
+- name: local.book-class
+  dependencies:
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.stdlib.0.0.1
+    used_as: Stdlib
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.math.0.0.1
+    used_as: Math
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.code.0.0.1
+    used_as: Code
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.itemize.0.0.1
+    used_as: Itemize
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.proof.0.0.1
+    used_as: Proof
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.tabular.0.0.1
+    used_as: Tabular
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.footnote-scheme.0.0.1
+    used_as: FootnoteScheme
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.font-junicode.0.0.1
+    used_as: FontJunicode
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.font-latin-modern.0.0.1
+    used_as: FontLatinModern
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.font-latin-modern-math.0.0.1
+    used_as: FontLatinModernMath
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.font-ipa-ex.0.0.1
+    used_as: FontIpaEx
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.hyph-english.0.0.1
+    used_as: HyphEnglish
+  - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.unidata.0.0.1
+    used_as: Unidata
+  test_only: false
+  local:
+    relative_path: book-class
 dependencies:
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.code.0.0.1
   used_as: Code
@@ -132,4 +163,6 @@ dependencies:
   used_as: Tabular
 - name: registered.6f2b80e9bb7c4e8af2104999fc25dbb3.unidata.0.0.1
   used_as: Unidata
+- name: local.book-class
+  used_as: BookClass
 test_dependencies: []

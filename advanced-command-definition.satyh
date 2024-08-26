@@ -2,7 +2,7 @@ use package open Stdlib
 use package open Code
 use package open Itemize
 use package open Math
-use open BookClass of `book-class`
+use package open BookClass
 use open Settings of `settings`
 
 module AdvancedCommandDefinition = struct

@@ -1,5 +1,5 @@
 use package open Stdlib
-use open BookClass of `book-class`
+use package open BookClass
 use open Settings of `settings`
 
 module TopPage = struct

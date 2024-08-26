@@ -1,6 +1,6 @@
 use package open Stdlib
 use package Math
-use open BookClass of `book-class`
+use package open BookClass
 
 
 module Term = struct

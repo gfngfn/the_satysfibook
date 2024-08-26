@@ -3,16 +3,16 @@ satysfi: "^0.1.0-alpha.1"
 authors:
 - "Takashi Suwa <@gfngfn>"
 contents:
-  document: {}
+  library:
+    source_directories:
+    - "./src"
+    main_module: "BookClass"
 registries:
 - name: "default"
   git:
     url: "https://github.com/SATySFi/default-registry"
     branch: "temp-dev-saphe"
 dependencies:
-- used_as: "BookClass"
-  local:
-    path: "./book-class"
 - used_as: "Stdlib"
   registered:
     registry: "default"

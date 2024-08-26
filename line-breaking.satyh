@@ -1,7 +1,7 @@
 use package open Stdlib
 use package open Code
 use package open Itemize
-use open BookClass of `book-class`
+use package open BookClass
 use open Settings of `settings`
 
 module LineBreaking = struct

@@ -4,8 +4,8 @@ use package Itemize
 use package Math
 use package Proof
 use package FontLatinModern
+use package open BookClass
 use open Term of `term`
-use open BookClass of `book-class`
 
 
 % ---- constants ----
