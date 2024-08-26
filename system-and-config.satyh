@@ -11,6 +11,7 @@ module SystemAndConfig = struct
     let open Book in
     let open Pervasives in
   '<
+    +p{\REMAINS{この章は全面的に変更}}
     +p{
       この章では\SATySFi;がどのようにフォントやパッケージや設定ファイルを
       読み込んで使用するかといったシステムに関する説明を提供する．

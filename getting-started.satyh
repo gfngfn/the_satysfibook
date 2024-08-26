@@ -10,6 +10,7 @@ module GettingStarted = struct
     let open Book in
     let open Pervasives in
   '<
+    +p{\REMAINS{Sapheについて加筆}}
     +p{
       ひとまず読者がすぐにさわれるものとして
       \index(`stdjareport`){\pkg{stdjareport}}クラスがあるので，
