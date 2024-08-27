@@ -1,14 +1,12 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Code
 use package open Itemize
 use package open BookClass
 use open Settings of `settings`
 
 module Introduction = struct
-  val introduction =
-    let open Book in
-    let open Pervasives in
-  '<
+  val introduction = '<
     +p{
       まずは
       「\SATySFi;がそもそもなぜマークアップ言語とその処理系という形態をとることを選んだのか」，

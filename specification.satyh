@@ -1,4 +1,5 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Math
 use package open Proof
 use package open BookClass
@@ -7,10 +8,7 @@ use open Term of `term`
 use open BNF of `bnf`
 
 module Specification = struct
-  val specification =
-    let open Book in
-    let open Pervasives in
-  '<
+  val specification = '<
     +p{
       この章は，対象をより細かい粒度で理解しようとせずにはいられない，物好きな読者向けに用意した．
       全貌を形式的に記述するには\SATySFi;は大きすぎるので，

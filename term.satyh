@@ -482,7 +482,7 @@ module Term = struct
       | Hole ->
           let embedded ctx = embed-inline-to-math MathOrd (
             let ctx =
-              ctx |> Book.set-latin-font Book.font-latin-mono
+              ctx |> set-latin-font font-latin-mono
                   |> set-text-color term-color
             in
               read-inline ctx {[]}

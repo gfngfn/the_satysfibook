@@ -1,4 +1,5 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Code
 use package open Math
 use package open Itemize
@@ -7,10 +8,7 @@ use package open BookClass
 use open Settings of `settings`
 
 module SystemAndConfig = struct
-  val system-and-config =
-    let open Book in
-    let open Pervasives in
-  '<
+  val system-and-config = '<
     +p{\REMAINS{この章は全面的に変更}}
     +p{
       この章では\SATySFi;がどのようにフォントやパッケージや設定ファイルを

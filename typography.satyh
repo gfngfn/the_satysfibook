@@ -1,4 +1,5 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Code
 use package open Math
 use package open Itemize
@@ -7,10 +8,7 @@ use package open BookClass
 use open Settings of `settings`
 
 module Typography = struct
-  val typography =
-    let open Book in
-    let open Pervasives in
-  '<
+  val typography = '<
     +p{
       文字は組版処理の主役であり，そして最も人間くささゆえの複雑性を備えた組版処理対象だ．
       現在の\SATySFi;はひとまず和欧混植がそれらしくできることを志向して開発したため

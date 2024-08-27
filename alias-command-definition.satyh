@@ -1,13 +1,11 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Code
 use package open BookClass
 use open Settings of `settings`
 
 module AliasCommandDefinition = struct
-  val alias-command-definition =
-    let open Book in
-    let open Pervasives in
-  '<
+  val alias-command-definition = '<
     +p{
       まずは非常に簡素な例から考える．
       例えば\pkg{stdjareport}の提供する\codem{\\dfn}というコマンド名が気に入らず，

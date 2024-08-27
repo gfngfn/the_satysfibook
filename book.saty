@@ -1,4 +1,5 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Code
 use package open BookClass
 use open Settings of `settings`
@@ -22,8 +23,6 @@ use open FutureWork of `future-work`
 use open Specification of `specification`
 use open Bib of `bib`
 
-let open Book in
-let open Pervasives in
 document (|
   title = {The \SATySFi;book（Web公開版 第2版）},
   author = {Takashi SUWA},

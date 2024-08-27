@@ -1,13 +1,11 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Itemize
 use package open BookClass
 use open Settings of `settings`
 
 module Preface = struct
-  val preface =
-    let open Book in
-    let open Pervasives in
-  '<
+  val preface = '<
     +p{
       \SATySFi;はマークアップ言語（およびその下層にあるプログラミング言語）
       とそれに対する処理系からなっており，

@@ -1,4 +1,5 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Code
 use package open Itemize
 use package open BookClass
@@ -6,8 +7,6 @@ use open Settings of `settings`
 
 module FutureWork = struct
   val future-work =
-    let open Book in
-    let open Pervasives in
   '<
     +p{
       \SATySFi;は現時点でも充分実用に耐える程度に機能を備えているが，

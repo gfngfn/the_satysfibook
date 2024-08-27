@@ -3,54 +3,41 @@ use package open BookClass
 use open Settings of `settings`
 
 module TopPage = struct
-  module TopPage :> sig
 
-    val bbf : context -> block-boxes
-    val +embed-block : block [(context -> block-boxes)]
-
-  end = struct
-
-    val widP = 182mm
-    val hgtP = 257mm
-    val widI = 176mm
-    val offsetBottom = 30mm
-    val offsetAdBottom = 10mm
-    val widAd = 140mm
-    val hgtAd = 20mm
+  val widP = 182mm
+  val hgtP = 257mm
+  val widI = 176mm
+  val offsetBottom = 30mm
+  val offsetAdBottom = 10mm
+  val widAd = 140mm
+  val hgtAd = 20mm
 
 
-    val block ctx +embed-block bbf =
-      bbf ctx
+  val ib-ad ctx =
+    let pads = (2pt, 2pt, 5pt, 5pt) in
+    let deco = Deco.simple-frame 2pt Color.red Color.white in
+    inline-frame-inner pads deco
+      (embed-block-bottom ctx widAd (fun ctx -> (
+          read-block ctx '<
+            +p{物理書籍が以下から入手できます：}
+            +centering{\url?(url = `https://booth.pm/ja/items/1046747`)({https://booth.pm/ja/items/1046747});}
+          >
+      )))
 
 
-    val ib-ad ctx =
-      let pads = (2pt, 2pt, 5pt, 5pt) in
-      let deco = Deco.simple-frame 2pt Color.red Color.white in
-      inline-frame-inner pads deco
-        (embed-block-bottom ctx widAd (fun ctx -> (
-            read-block ctx '<
-              +Book.p{物理書籍が以下から入手できます：}
-              +centering{\Book.url?(url = `https://booth.pm/ja/items/1046747`)({https://booth.pm/ja/items/1046747});}
-            >
-        )))
+  val block ctx +top-page =
+    let img-top-page = load-image `./img/hyoushi-clipped.jpg` in
+    let offsetX = (widP -' widI) *' 0.5 in
+    let ib =
+      inline-graphics 0mm 0mm 0mm (fun _ -> unite-graphics [
+        draw-text (offsetX, offsetBottom) (use-image-by-width img-top-page widI),
+%        stroke 1pt Color.red (Gr.rectangle (offsetX, 0mm) (widP -' offsetX, hgtP));
+        Gr.text-centering (widP *' 0.5, offsetAdBottom) (ib-ad ctx),
+      ])
+    in
+    line-break true true ctx (ib ++ inline-fil)
 
 
-    val bbf ctx =
-      let img-top-page = load-image `./img/hyoushi-clipped.jpg` in
-      let offsetX = (widP -' widI) *' 0.5 in
-      let ib =
-        inline-graphics 0mm 0mm 0mm (fun _ -> unite-graphics [
-          draw-text (offsetX, offsetBottom) (use-image-by-width img-top-page widI),
-  %        stroke 1pt Color.red (Gr.rectangle (offsetX, 0mm) (widP -' offsetX, hgtP));
-          Gr.text-centering (widP *' 0.5, offsetAdBottom) (ib-ad ctx),
-        ])
-      in
-      line-break true true ctx (ib ++ inline-fil)
+  val top-page = '< +top-page; >
 
-  end
-
-
-  val top-page = '<
-    +TopPage.embed-block(TopPage.bbf);
-  >
 end

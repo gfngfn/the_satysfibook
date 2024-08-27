@@ -1,13 +1,11 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Itemize
 use package open BookClass
 use open Settings of `settings`
 
 module EditionPreface = struct
-  val edition-preface =
-    let open Book in
-    let open Pervasives in
-  '<
+  val edition-preface = '<
     +p{
       本書は，2017年度未踏事業のひとつとして筆者が開発し，
       2024年8月現在も発展を続けている新しい組版処理システム\SATySFi;について

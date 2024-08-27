@@ -1,4 +1,5 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Math
 use package open Itemize
 use package open Code
@@ -6,10 +7,7 @@ use package open BookClass
 use open Settings of `settings`
 
 module MathTypesetting = struct
-  val math-typesetting =
-    let open Book in
-    let open Pervasives in
-  '<
+  val math-typesetting = '<
     +p{
       理工系の文書をしたためる者にとって，
       数式組版機能は当然のものとして組版処理システムに備わっていてほしいものだ．

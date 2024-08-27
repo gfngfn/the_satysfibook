@@ -1,4 +1,5 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Code
 use package open Itemize
 use package open Math
@@ -6,10 +7,7 @@ use package open BookClass
 use open Settings of `settings`
 
 module Overall = struct
-  val overall =
-    let open Book in
-    let open Pervasives in
-  '<
+  val overall = '<
     +p{
       \SATySFi;のおおよその用法は既に\ref-chapter(`getting-started`);で説明したが，
       もしかすると他のマークアップ言語ないし組版処理システムではあまり意識することのない

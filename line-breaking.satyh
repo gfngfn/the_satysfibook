@@ -1,14 +1,12 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Code
 use package open Itemize
 use package open BookClass
 use open Settings of `settings`
 
 module LineBreaking = struct
-  val line-breaking =
-    let open Book in
-    let open Pervasives in
-  '<
+  val line-breaking = '<
     +section{行分割処理の概要}<
       +p{
         行分割処理に於いて，見た目が十分整うように行を段落に切り分けるのはそれほど自明ではない．

@@ -1,14 +1,12 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Math
 use package open Itemize
 use package open BookClass
 use open Settings of `settings`
 
 module PageBreaking = struct
-  val page-breaking =
-    let open Book in
-    let open Pervasives in
-  '<
+  val page-breaking = '<
     +p{
       ページ分割は，
       おそらく\SATySFi;の機構の中でも最も理解が難しい部分だろう．

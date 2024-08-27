@@ -24,7 +24,7 @@ module Settings = struct
   val inline ctx \REMAINS msg =
     let pads = (2pt, 2pt, 2pt, 2pt) in
     let ctx =
-      ctx |> Book.set-cjk-font Book.font-cjk-gothic
+      ctx |> set-cjk-font font-cjk-gothic
           |> set-text-color Color.red
     in
       inline-frame-inner pads (Deco.simple-frame 1pt Color.red Color.yellow)
@@ -67,7 +67,7 @@ module Settings = struct
 
 
   val inline ctx \quad =
-    let sz = Book.get-cjk-font-size ctx in
+    let sz = get-cjk-font-size ctx in
       inline-skip sz
 
 
@@ -76,11 +76,11 @@ module Settings = struct
 
 
   val inline ctx \italic it =
-    read-inline (ctx |> Book.set-latin-font Book.font-latin-italic) it
+    read-inline (ctx |> set-latin-font font-latin-italic) it
 
 
   val inline \dfnje itj ite =
-    {\Book.dfn{#itj;}(\italic{#ite;})}
+    {\dfn{#itj;}(\italic{#ite;})}
 
 
   val set-mono-font ctx =
@@ -178,7 +178,7 @@ module Settings = struct
     val inline ctx \roman ?(size = sizeopt) its =
       let size = Option.from 10mm sizeopt in
       let ctx =
-        ctx |> Book.set-latin-font Book.font-latin-roman
+        ctx |> set-latin-font font-latin-roman
             |> set-font-size size
       in
       let pads = (0pt, 0pt, 0pt, 0pt) in
@@ -847,7 +847,7 @@ module Settings = struct
     let it =
       match indexopt with
       | None    -> {#it-cmd; : ${#m}}
-      | Some(s) -> {\Book.index?(it = {\Code.code(s);})(s){#it-cmd;} : ${#m}}
+      | Some(s) -> {\index?(it = {\Code.code(s);})(s){#it-cmd;} : ${#m}}
       end
     in
     let wid = get-text-width ctx in
@@ -894,8 +894,8 @@ module Settings = struct
     let decoset = VDecoSet.simple-frame-stroke 1pt (Gray(0.75)) in
     let bt =
       match labelopt with
-      | None        -> '<+Book.example{#it;}>
-      | Some(label) -> '<+Book.example?(label = label)({#it;});>
+      | None        -> '<+example{#it;}>
+      | Some(label) -> '<+example?(label = label)({#it;});>
       end
     in
       block-frame-breakable ctx pads decoset (fun ctx ->
@@ -930,7 +930,7 @@ module Settings = struct
 
   val inline ctx \meta it =
     let ctx =
-      ctx |> Book.set-latin-font Book.font-latin-italic
+      ctx |> set-latin-font font-latin-italic
     in
       read-inline ctx it
 
@@ -1089,8 +1089,8 @@ module Settings = struct
     let decoset = VDecoSet.empty in
     block-frame-breakable ctx pads decoset (fun ctx -> (
       let ctx-head =
-        ctx |> Book.set-cjk-font Book.font-cjk-gothic
-            |> Book.set-latin-font Book.font-latin-sans
+        ctx |> set-cjk-font font-cjk-gothic
+            |> set-latin-font font-latin-sans
       in
       let ib =
         inline-skip (0pt -' desc-indent)
@@ -1173,7 +1173,7 @@ module Settings = struct
 
   val inline ctx \reserved-word it =
     let ctx =
-      ctx |> Book.set-latin-font Book.font-latin-mono
+      ctx |> set-latin-font font-latin-mono
     in
     read-inline ctx it
 

@@ -1,4 +1,5 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Code
 use package open Itemize
 use package open Math
@@ -7,10 +8,7 @@ use open Settings of `settings`
 use open Term of `term`
 
 module Programming = struct
-  val programming =
-    let open Book in
-    let open Pervasives in
-  '<
+  val programming = '<
     +p{
       既に述べたように，\SATySFi;はいわゆる函数型らしい特徴を兼ね備えた
       組版処理向けのマークアップ言語である．

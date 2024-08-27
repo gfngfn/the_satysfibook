@@ -4,9 +4,7 @@ use package open BookClass
 use open Settings of `settings`
 
 module Bib = struct
-  val bibliography =
-    let open Book in
-  [
+  val bibliography = [
     (`PostScript`, book (|
       author = {| Adobe Systems |},
       title = {PostScript Language Reference Manual},

@@ -1,4 +1,5 @@
 use package open Stdlib
+use package open Stdlib.Pervasives
 use package open Code
 use package open Math
 use package open Itemize
@@ -7,10 +8,7 @@ use package open BookClass
 use open Settings of `settings`
 
 module Graphics = struct
-  val graphics =
-    let open Book in
-    let open Pervasives in
-  '<
+  val graphics = '<
       +p{
         版面を構成する文字以外の要素で重要なのがグラフィックスである．
         本章では，本文の囲み枠，表の罫線，幾何図形，直交座標系のグラフ，グラフ理論のグラフ，可換図式，
