@@ -11,59 +11,17 @@ use package FontLatinModern
 use package FontLatinModernMath
 
 module BookClass = struct
-  type bib-in-proceedings =
-    (|
-      author    : list inline-text,
-      title     : inline-text,
-      booktitle : inline-text,
-      series    : option inline-text,
-      volume    : option int,
-      number    : option inline-text,
-      pages     : int * int,
-      year      : int,
-    |)
-
-  type bib-article =
-    (|
-      author  : list inline-text,
-      title   : inline-text,
-      journal : inline-text,
-      volume  : option int,
-      number  : option inline-text,
-      pages   : int * int,
-      year    : int,
-    |)
-
-  type bib-book =
-    (|
-      author    : list inline-text,
-      title     : inline-text,
-      publisher : inline-text,
-      year      : int,
-    |)
-
-  type bib-web-site =
-    (|
-      author : list inline-text ,
-      title  : inline-text,
-      url    : string,
-      year   : int,
-    |)
-
-  type bib-item =
-    | InProceedings of bib-in-proceedings
-    | Article       of bib-article
-    | Book          of bib-book
-    | WebSite       of bib-web-site
 
 
   module Book :> sig
+
+    type bib-item :: o
 
     val document :
       (|
         title : inline-text,
         author : inline-text,
-        preface : block-text,
+        prefaces : list (inline-text * string * block-text),
         bibliography : list (string * bib-item),
         top-page : option block-text,
         copyright-page : (|
@@ -118,7 +76,120 @@ module BookClass = struct
     val \footnote : inline [inline-text]
     val \url : inline [?(url : string) inline-text]
 
+    val in-proceedings : ?(
+      series : inline-text,
+      volume : inline-text,
+      number : inline-text,
+      pages  : int * int,
+    ) (|
+      author    : list inline-text,
+      title     : inline-text,
+      booktitle : inline-text,
+      year      : int,
+    |) -> bib-item
+
+    val article : ?(
+      volume : inline-text,
+      number : inline-text,
+      pages  : int * int,
+    ) (|
+      author  : list inline-text,
+      title   : inline-text,
+      journal : inline-text,
+      year    : int,
+    |) -> bib-item
+
+    val book : (|
+      author    : list inline-text,
+      title     : inline-text,
+      publisher : inline-text,
+      year      : int,
+    |) -> bib-item
+
+    val web-site : (|
+      author : list inline-text ,
+      title  : inline-text,
+      url    : string,
+      year   : int,
+    |) -> bib-item
+
   end = struct
+
+    type bib-item =
+      | InProceedings of (|
+          author    : list inline-text,
+          title     : inline-text,
+          booktitle : inline-text,
+          year      : int,
+          series    : option inline-text,
+          volume    : option inline-text,
+          number    : option inline-text,
+          pages     : option (int * int),
+        |)
+      | Article of (|
+          author  : list inline-text,
+          title   : inline-text,
+          journal : inline-text,
+          year    : int,
+          volume  : option inline-text,
+          number  : option inline-text,
+          pages   : option (int * int),
+        |)
+      | Book of (|
+          author    : list inline-text,
+          title     : inline-text,
+          publisher : inline-text,
+          year      : int,
+        |)
+      | WebSite of (|
+          author : list inline-text ,
+          title  : inline-text,
+          url    : string,
+          year   : int,
+        |)
+
+
+    val in-proceedings ?(
+      series = series,
+      volume = volume,
+      number = number,
+      pages  = pages,
+    ) r =
+      InProceedings(|
+        author    = r#author,
+        title     = r#title,
+        booktitle = r#booktitle,
+        year      = r#year,
+        series    = series,
+        volume    = volume,
+        number    = number,
+        pages     = pages,
+      |)
+
+
+    val article ?(
+      volume = volume,
+      number = number,
+      pages  = pages,
+    ) r =
+      Article(|
+        author  = r#author,
+        title   = r#title,
+        journal = r#journal,
+        year    = r#year,
+        volume  = volume,
+        number  = number,
+        pages   = pages,
+      |)
+
+
+    val book r =
+      Book(r)
+
+
+    val web-site r =
+      WebSite(r)
+
 
     type toc-element =
       | TOCElementChapter    of string * inline-text
@@ -444,14 +515,17 @@ module BookClass = struct
         end
       in
         match (optvol, optnum) with
-        | (None, _)          -> {\ }
-        | (Some(v), None)    -> let itv = embed-string (arabic v) in {#itv;#its;}
-        | (Some(v), Some(n)) -> let itv = embed-string (arabic v) in {#itv;(#n;)#its;}
+        | (None, _)               -> {\ }
+        | (Some(it-vol), None)    -> {#it-vol;#its;}
+        | (Some(it-vol), Some(n)) -> {#it-vol;(#n;)#its;}
         end
 
 
-    val make-pages (p1, p2) =
-      embed-string ((arabic p1) ^ `–` ^ (arabic p2))
+    val make-pages pages-opt =
+      match pages-opt with
+      | None           -> {}
+      | Some((p1, p2)) -> let it = embed-string ((arabic p1) ^ `–` ^ (arabic p2)) in {pages #it;,\ }
+      end
 
 
     val inline ctx \cite labels =
@@ -639,12 +713,14 @@ module BookClass = struct
       in
 
       let bb-preface =
-        let ib-preface-title =
-          read-inline (make-chapter-title ctx-doc) {序文} ++ inline-fil
-        in
-        let bb-preface-title = (chapter-heading `preface` ctx-doc None ib-preface-title) in
-        let bb-preface-main = read-block ctx-doc record#preface in
+        record#prefaces |> List.map (fun (it-title, key, bt-contents) -> (
+          let ib-preface-title =
+            read-inline (make-chapter-title ctx-doc) it-title ++ inline-fil
+          in
+          let bb-preface-title = (chapter-heading key ctx-doc None ib-preface-title) in
+          let bb-preface-main = read-block ctx-doc bt-contents in
           bb-preface-title +++ bb-preface-main +++ clear-page
+        )) |> List.fold-left (+++) block-nil
       in
 
       % -- main --
@@ -749,7 +825,7 @@ module BookClass = struct
                   let it-pages = make-pages r#pages in
                   let it-year = embed-string (arabic r#year) in
                     {#it-authors;. #it-title;.
-                      In \book-title{#it-book-title;}, #it-volnum;pages #it-pages;, #it-year;.}
+                      In \book-title{#it-book-title;}, #it-volnum;#it-pages;#it-year;.}
 
               | Article(r) ->
                   let it-authors = join-authors r#author in
@@ -759,7 +835,7 @@ module BookClass = struct
                   let it-pages = make-pages r#pages in
                   let it-year = embed-string (arabic r#year) in
                     {#it-authors;. #it-title;.
-                      \book-title{#it-journal;}, #it-volnum;pages #it-pages;, #it-year;.}
+                      \book-title{#it-journal;}, #it-volnum;#it-pages;#it-year;.}
 
               | Book(r) ->
                   let it-authors = join-authors r#author in

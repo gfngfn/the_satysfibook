@@ -4,184 +4,187 @@ use package open BookClass
 use open Settings of `settings`
 
 module Bib = struct
-  val bibliography = [
-    (`PostScript`, Book(|
+  val bibliography =
+    let open Book in
+  [
+    (`PostScript`, book (|
       author = {| Adobe Systems |},
       title = {PostScript Language Reference Manual},
       publisher = {Addison Wesley Longman},
       year = 1985,
     |)),
-    (`Asai-OCaml`, Book(|
+    (`Asai-OCaml`, book (|
       author = {| 浅井 健一 |},
       title = {プログラミングの基礎},
       publisher = {サイエンス社},
       year = 2007,
     |)),
-    (`otfm`, WebSite(|
+    (`otfm`, web-site (|
       author = {| Daniel Bünzli | Takashi Suwa |},
       title = {An extended version of Otfm},
       url = `https://github.com/gfngfn/otfm`,
       year = 2017,
     |)),
-    (`TeXbyTopic`, Book(|
+    (`TeXbyTopic`, book (|
       author = {| Victor Eijkhout |},
       title = {\Pervasives.TeX; by Topic},
       publisher = {Addison–Wesley},
       year = 1991,
     |)),
-    (`LyX`, WebSite(|
+    (`LyX`, web-site (|
       author = {| Matthias Ettrich |},
       title = {LyX – The Document Processor},
       url = `https://www.lyx.org`,
       year = 1995,
     |)),
-    (`FreemanPfenning1991PLDI`, InProceedings(|
+    (`FreemanPfenning1991PLDI`, in-proceedings ?(
+      pages = (268, 277),
+    ) (|
       author = {| Tim Freeman | Frank Pfenning |},
       title = {Refinement types for ML},
       booktitle = {Proceedings of the ACM SIGPLAN Conference on Programming Language Design and Implementation},
-      series = None, volume = None, number = None,
-      pages = (268, 277),
       year = 1991,
     |)),
-    (`satysfi-cross-windows`, WebSite(|
+    (`satysfi-cross-windows`, web-site (|
       author = {| Masaki Hara |},
       title = {satysfi-cross-windows},
       url = `https://github.com/qnighy/satysfi-cross-windows`,
       year = 2018,
     |)),
-    (`satysfi-syntax-memo`, WebSite(|
+    (`satysfi-syntax-memo`, web-site (|
       author = {| Masaki Hara |},
       title = {\Pervasives.SATySFi;構文メモ (2018/02/23)},
       url = `https://gist.github.com/qnighy/951d1ee5a7ee7c8f95bb323e881eaf8a`,
       year = 2018,
     |)),
-    (`Hindley1969`, Article(|
+    (`Hindley1969`, article ?(
+      volume = {146},
+      pages = (29, 60),
+    ) (|
       author = {| R. Hindley |},
       title = {The principal type-scheme of an object in combinatory logic},
       journal = {Transactions of the American Mathematical Society},
-      volume = Some(146),
-      number = None,
-      pages = (29, 60),
       year = 1969,
     |)),
-    (`IEEE754`, Book(|
+    (`IEEE754`, book (|
       author = {| IEEE Computer Society |},
       title = {IEEE Standard for Floating-Point Arithmetic},
       publisher = {IEEE},
       year = 2008,
     |)),
-    (`Igarashi-OCaml`, Book(|
+    (`Igarashi-OCaml`, book (|
       author = {| 五十嵐 淳 |},
       title = {プログラミング in OCaml},
       publisher = {技術評論社},
       year = 2007,
     |)),
-    (`Igarashi-Program`, Book(|
+    (`Igarashi-Program`, book (|
       author = {| 五十嵐 淳 |},
       title = {プログラミング言語の基礎概念},
       publisher = {サイエンス社},
       year = 2011,
     |)),
-    (`satysfi-steamer`, WebSite(|
+    (`satysfi-steamer`, web-site (|
       author = {| Hiromi Ishii |},
       title = {Steamer: presentation in \Pervasives.SATySFi;},
       url = `https://github.com/konn/satysfi-steamer`,
       year = 2018,
     |)),
-    (`Kieda2018`, Book(|
+    (`Kieda2018`, book (|
       author = {| 木枝 祐介 |},
       title = {数式組版},
       publisher = {ラムダノート},
       year = 2018,
     |)),
-    (`KnowlesFlanagan2007ESOP`, InProceedings(|
+    (`KnowlesFlanagan2007ESOP`, in-proceedings ?(
+      pages = (505, 519),
+    ) (|
       author = {| Kenneth Knowles | Cormac Flanagan |},
       title = {Type reconstruction for general refinement types},
       booktitle = {Proceedings of the 16th European Symposium on Programming (ESOP’07)},
-      series = None, volume = None, number = None,
-      pages=(505, 519),
       year = 2007,
     |)),
-    (`TeXbook`, Book(|
+    (`TeXbook`, book (|
       author = {| Donald E. Knuth |},
       year = 1986,
       title = {The \Pervasives.TeX;book},
       publisher = {Addison–Wisley},
     |)),
-    (`knuth-plass`, Article(|
+    (`knuth-plass`, article ?(
+      volume = {11},
+      pages = (1119, 1184),
+    ) (|
       author = {| Donald E. Knuth | Michael F. Plass |},
-      year = 1981,
       title = {Breaking paragraphs into lines},
       journal = {Software–Practice and Experience},
-      volume = Some(11),
-      number = None,
-      pages = (1119, 1184),
+      year = 1981,
     |)),
-    (`Kuroki2015`, Article(|
+    (`Kuroki2015`, article ?(
+      volume = {60},
+      number = {9},
+      pages = (536, 542),
+    ) (|
       author = {| 黒木 裕介 |},
       title = {組版におけるオペレーションズ・リサーチ},
-      year = 2015,
       journal = {オペレーションズ・リサーチ},
-      volume = Some(60),
-      number = Some({9}),
-      pages = (536, 542),
+      year = 2015,
     |)),
-    (`liang-knuth`, Book(|
+    (`liang-knuth`, book (|
       author = {| Franklin M. Liang |},
       title = {Word Hy-phen-a-tion by Com-put-er},
       publisher = {Ph. D. thesis, Stanford University},
       year = 1983,
     |)),
-    (`satysfi-online`, WebSite(|
+    (`satysfi-online`, web-site (|
       author = {| \twitter{miettal} |},
       title = {\Pervasives.SATySFi;がWebで動くやつを作った — 暇な女子高専生のブログ},
       url = `http://miettal.hatenablog.com/entry/2018/02/15/133623`,
       year = 2018,
     |)),
-    (`Milner1978`, Article(|
+    (`Milner1978`, article ?(
+      volume = {17},
+      pages = (348, 374),
+    ) (|
       author = {| Robin Milner |},
       title = {A Theory of Type Polymorphism in Programming},
       journal = {Journal of Computer and System Science (JCSS)},
-      volume = Some(17),
-      number = None,
-      pages = (348, 374),
       year = 1978,
     |)),
-    (`yojson`, WebSite(|
+    (`yojson`, web-site (|
       author = {| \github{mjambon} |},
       title = {Yojson},
       url = `https://github.com/mjambon/yojson`,
       year = 2010,
     |)),
-    (`Ohori1995`, InProceedings(|
+    (`Ohori1995`, in-proceedings ?(
+      volume = {17},
+      number = {6},
+      pages = (844, 895),
+    ) (|
       author = {| Atsushi Ohori |},
-      year = 1995,
       title = {A polymorphic record calculus and its compilation},
       booktitle = {ACM Transactions on Programming Languages and Systems},
-      volume = Some(17),
-      number = Some({6}),
-      series = None,
-      pages = (844, 895),
+      year = 1995,
     |)),
-    (`Osinski2006`, Book(|
+    (`Osinski2006`, book (|
       author = {| Edward Osinski |},
       title = {A Polymorphic Type System and Compilation Scheme for Record Concatenation},
       publisher = {Ph. D. thesis, New York University},
       year = 2006,
     |)),
-    (`satysfi-playground`, WebSite(|
+    (`satysfi-playground`, web-site (|
       author = {| \github{pandaman64} |},
       title = {\Pervasives.SATySFi; Playground},
       url = `http://satysfi-playground.tech/`,
       year = 2018,
     |)),
-    (`TaPL`, Book(|
+    (`TaPL`, book (|
       author = {| Benjamin C. Pierce |},
       title = {Types and Programming Languages},
       publisher = {The MIT Press},
       year = 2002,
     |)),
-    (`TaPL-ja`, Book(|
+    (`TaPL-ja`, book (|
       author = {| Benjamin C. Pierce
         （住井 英二郎 監訳，遠藤 侑介 訳，酒井 政裕 訳，今井 敬吾 訳，黒木 裕介 訳，今井 宜洋 訳，才川 隆文 訳，今井 健男 訳）
       |},
@@ -189,49 +192,47 @@ module Bib = struct
       publisher = {オーム社},
       year = 2013,
     |)),
-    (`omega`, WebSite(|
+    (`omega`, web-site (|
       author = {| John Plaice | Yannis Haralanbous |},
       title = {Draft documentation for the ${\Math.Omega} system},
       url = `http://www.bakoma-tex.com/doc/omega/base/doc-18.pdf`,
       year = 1999,
     |)),
-    (`Remy1993`, Article(|
+    (`Remy1993`, article ?(
+      pages = (67, 95),
+    ) (|
       author = {| Didier Rémy |},
       title = {Type inference for records in a natural extension of ML},
-      journal = {Theoretical Aspects of Object-Oriented Programming.
-                 Types, Semantics and Language Design},
-      number = None,
-      volume = None,
-      pages = (67, 95),
+      journal = {Theoretical Aspects of Object-Oriented Programming. Types, Semantics and Language Design},
       year = 1993,
     |)),
-    (`RondonKawaguchiJhala2008PLDI`, InProceedings(|
+    (`RondonKawaguchiJhala2008PLDI`, in-proceedings ?(
+      pages = (159, 169),
+    ) (|
       author = {| Patrick M. Rondon | Ming Kawaguchi | Ranjit Jhala |},
       title = {Liquid types},
       booktitle = {Proceedings of the 29th ACM SIGPLAN Conference on Programming Language Design and Implementation},
-      series = None, volume = None, number = None,
-      pages = (159, 169),
       year = 2008,
     |)),
-    (`unicode-eaw`, WebSite(|
+    (`unicode-eaw`, web-site (|
      author = {| Unicode Consortium |},
      title ={Unicode Standard Annex \#11: East Asian Width (Unicode 10.0.0)},
      url = `http://unicode.org/reports/tr11/`,
      year = 2017,
     |)),
-    (`unicode-lb`, WebSite(|
+    (`unicode-lb`, web-site (|
      author = {| Unicode Consortium |},
      title ={Unicode Standard Annex \#14: Unicode Line Breaking Algorithm (Unicode 10.0.0)},
      url = `http://unicode.org/reports/tr14/`,
      year = 2017,
     |)),
-    (`unicode-script`, WebSite(|
+    (`unicode-script`, web-site (|
      author = {| Unicode Consortium |},
      title ={Unicode Standard Annex \#24: Unicode Script Property (Unicode 10.0.0)},
      url = `http://unicode.org/reports/tr24/`,
      year = 2017,
     |)),
-    (`jlreq`, Book(|
+    (`jlreq`, book (|
       author = {| W3C日本語組版タスクフォース |},
       year = 2012,
       title = {W3C技術ノート 日本語組版処理の要件},

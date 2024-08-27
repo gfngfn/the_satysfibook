@@ -3,6 +3,7 @@ use package open Code
 use package open BookClass
 use open Settings of `settings`
 use open TopPage of `top-page`
+use open EditionPreface of `edition-preface`
 use open Preface of `preface`
 use open Introduction of `introduction`
 use open GettingStarted of `getting-started`
@@ -26,7 +27,10 @@ let open Pervasives in
 document (|
   title = {The \SATySFi;book（Web公開版 第2版）},
   author = {Takashi SUWA},
-  preface = preface,
+  prefaces = [
+    ({第2版序文}, `edition-preface`, edition-preface),
+    ({はじめに}, `preface`, preface),
+  ],
   bibliography = bibliography,
   top-page = Some(top-page),
   copyright-page = (|
