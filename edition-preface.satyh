@@ -1,0 +1,20 @@
+use package open Stdlib
+use package open Stdlib.Pervasives
+use package open Itemize
+use package open BookClass
+use open Settings of `settings`
+
+module EditionPreface = struct
+  val edition-preface = '<
+    +p{
+      本書は，2017年度未踏事業のひとつとして筆者が開発し，
+      2024年8月現在も発展を続けている新しい組版処理システム\SATySFi;について
+      解説することを目的としたものである．
+      最初のバージョンである\SATySFi; 0.0.1のリリースから早くも6年が経ち，
+      ユーザの皆さんや開発者自身の経験から，当初の言語設計の望ましくなかった点が次第に明らかになってきた．
+      このたび，様々な艱難を排し，長らく計画していた非互換なバージョンのリリースにようやくこぎつけつつあるため，
+      その新しい言語設計も含めて解説するように第1版から内容を更新することにした．
+      \REMAINS{要加筆}
+    }
+  >
+end

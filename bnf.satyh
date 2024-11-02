@@ -1,0 +1,60 @@
+% copy and modified from lib-satysfi
+use package open Stdlib
+use package Math
+
+module BNF :> sig
+  val +BNF : block [math-text, list (list math-text)]
+  val \BNF : inline [math-text, list (list math-text)]
+  val \BNFs : inline [list (math-text * list (list math-text))]
+end = struct
+
+  val insert-bars mlst =
+    Math.join ${\Math.mid} mlst
+
+
+  val tabular-of-math ctx mnontm mlstlst =
+    let sz = get-font-size ctx in
+    let vpad = sz *' 0.25 in
+    let padsL = (0pt, sz *' 0.5, vpad, vpad) in
+    let padsR = (0pt, 0pt, vpad, vpad) in
+      mlstlst |> List.fold-lefti (fun i acc mlst -> (
+        let c0 =
+          if i == 0 then
+            NormalCell(padsL, embed-math ctx (read-math ctx ${#mnontm \Math.mathrel{: : =}}))
+          else
+            NormalCell(padsL, inline-fil ++ embed-math ctx (read-math ctx ${\Math.mid}))
+        in
+        let ib = embed-math ctx (read-math ctx (insert-bars mlst)) ++ inline-fil in
+        [c0, NormalCell(padsR, ib)] :: acc
+      )) [] |> List.reverse
+
+
+  val block ctx +BNF mnontm mlstlst =
+    let celllstlst = tabular-of-math ctx mnontm mlstlst in
+    let ib = tabular celllstlst (fun _ _ -> Gr.empty) in
+    let vp = get-font-size ctx *' 1. in
+      line-break true true (ctx |> set-paragraph-margin vp vp)
+        (inline-fil ++ ib ++ inline-fil)
+
+
+  val inline ctx \BNF mnontm mlstlst =
+    inline-fil ++
+      embed-block-breakable ctx (read-block ctx '<+BNF(mnontm)(mlstlst);>)
+
+
+  val inline ctx \BNFs lst =
+    let cllall =
+      lst |> List.fold-left (fun cllacc (mnontm, mlstlst) -> (
+        let cll = tabular-of-math ctx mnontm mlstlst in
+          List.append cllacc cll
+      )) []
+    in
+    let ib = tabular cllall (fun _ _ -> Gr.empty) in
+    let vp = get-font-size ctx *' 1.5 in
+    let bb =
+      line-break true true (ctx |> set-paragraph-margin vp vp)
+        (inline-fil ++ ib ++ inline-fil)
+    in
+      inline-fil ++ embed-block-breakable ctx bb
+
+end
